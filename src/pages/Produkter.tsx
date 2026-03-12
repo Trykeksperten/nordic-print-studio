@@ -19,8 +19,8 @@ const products = [
   },
   {
     id: "standard-hoodie",
-    da: { name: "Russell Hoodie Standard", desc: "Komfortabel hoodie i mellemvægt. Ideel til firmatøj og merchandise." },
-    en: { name: "Russell Hoodie Standard", desc: "Comfortable mid-weight hoodie. Ideal for corporate wear and merchandise." },
+    da: { name: "Russell Hoodie Basic", desc: "Komfortabel hoodie i mellemvægt. Ideel til firmatøj og merchandise." },
+    en: { name: "Russell Hoodie Basic", desc: "Comfortable mid-weight hoodie. Ideal for corporate wear and merchandise." },
     sizes: ["XS", "S", "M", "L", "XL", "2XL"],
   },
   {
