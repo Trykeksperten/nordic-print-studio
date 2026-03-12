@@ -48,6 +48,13 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
 
+  // Calibration: draggable print area
+  const defaults = defaultPrintAreas[placementId];
+  const [areaPos, setAreaPos] = useState({ top: defaults.top, left: defaults.left, width: defaults.width, height: defaults.height });
+  const [isDraggingArea, setIsDraggingArea] = useState(false);
+  const areaDragRef = useRef<{ startX: number; startY: number; startTop: number; startLeft: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -74,6 +81,7 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
     });
   };
 
+  // Design drag handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -81,16 +89,38 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
   }, [design.pos]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isDraggingArea && areaDragRef.current && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const dx = ((e.clientX - areaDragRef.current.startX) / rect.width) * 100;
+      const dy = ((e.clientY - areaDragRef.current.startY) / rect.height) * 100;
+      setAreaPos(prev => ({
+        ...prev,
+        top: Math.max(0, Math.min(100 - prev.height, areaDragRef.current!.startTop + dy)),
+        left: Math.max(0, Math.min(100 - prev.width, areaDragRef.current!.startLeft + dx)),
+      }));
+      return;
+    }
     if (!isDragging || !dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
     onDesignChange({ ...design, pos: { x: dragRef.current.startPosX + dx, y: dragRef.current.startPosY + dy } });
-  }, [isDragging, design, onDesignChange]);
+  }, [isDragging, isDraggingArea, design, onDesignChange]);
 
   const handleMouseUp = useCallback(() => {
+    if (isDraggingArea) {
+      setIsDraggingArea(false);
+      // Log final position for calibration
+      console.log(`📐 Print area for "${placementId}":`, JSON.stringify({
+        top: Math.round(areaPos.top),
+        left: Math.round(areaPos.left),
+        width: areaPos.width,
+        height: areaPos.height,
+      }));
+    }
     setIsDragging(false);
     dragRef.current = null;
-  }, []);
+    areaDragRef.current = null;
+  }, [isDraggingArea, placementId, areaPos]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -106,7 +136,15 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
     onDesignChange({ ...design, pos: { x: dragRef.current.startPosX + dx, y: dragRef.current.startPosY + dy } });
   }, [isDragging, design, onDesignChange]);
 
-  const printArea = printAreas[placementId];
+  // Area drag start
+  const handleAreaMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingArea(true);
+    areaDragRef.current = { startX: e.clientX, startY: e.clientY, startTop: areaPos.top, startLeft: areaPos.left };
+  }, [areaPos]);
+
+  const printArea = { top: `${areaPos.top}%`, left: `${areaPos.left}%`, width: `${areaPos.width}%`, height: `${areaPos.height}%` };
   const mockupImage = mockupImages[placementId];
   const isSleeve = placementId.includes("Sleeve");
 
