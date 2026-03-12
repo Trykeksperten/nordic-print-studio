@@ -1,6 +1,9 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, Move } from "lucide-react";
+import { Upload, Move, X } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
+import hoodieFront from "@/assets/hoodie-front.png";
+import hoodieBack from "@/assets/hoodie-back.png";
+import hoodieSleeve from "@/assets/hoodie-sleeve.png";
 
 export interface PlacementDesign {
   file: string | null;
@@ -13,7 +16,6 @@ export interface PlacementDesign {
 interface PlacementStepProps {
   placementId: string;
   label: string;
-  printArea: { top: string; left: string; width: string; height: string };
   design: PlacementDesign;
   onDesignChange: (design: PlacementDesign) => void;
 }
@@ -25,7 +27,23 @@ const sizeOptions = [
   { value: "20-40", da: "20–40 cm (50 DKK)", en: "20–40 cm (50 DKK)" },
 ];
 
-const PlacementStep = ({ placementId, label, printArea, design, onDesignChange }: PlacementStepProps) => {
+// Print areas for each placement (relative coordinates in %)
+const printAreas: Record<string, { top: string; left: string; width: string; height: string }> = {
+  fullFront: { top: "22%", left: "30%", width: "40%", height: "30%" },
+  leftSleeve: { top: "40%", left: "12%", width: "22%", height: "18%" },
+  rightSleeve: { top: "40%", left: "66%", width: "22%", height: "18%" },
+  fullBack: { top: "22%", left: "30%", width: "40%", height: "35%" },
+};
+
+// Mockup images for each placement
+const mockupImages: Record<string, string> = {
+  fullFront: hoodieFront,
+  leftSleeve: hoodieSleeve,
+  rightSleeve: hoodieSleeve,
+  fullBack: hoodieBack,
+};
+
+const PlacementStep = ({ placementId, label, design, onDesignChange }: PlacementStepProps) => {
   const { lang } = useLanguage();
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
@@ -44,6 +62,16 @@ const PlacementStep = ({ placementId, label, printArea, design, onDesignChange }
       });
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleRemoveDesign = () => {
+    onDesignChange({
+      file: null,
+      fileName: "",
+      pos: { x: 0, y: 0 },
+      scale: 1,
+      sizeCategory: "1-6",
+    });
   };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -78,7 +106,9 @@ const PlacementStep = ({ placementId, label, printArea, design, onDesignChange }
     onDesignChange({ ...design, pos: { x: dragRef.current.startPosX + dx, y: dragRef.current.startPosY + dy } });
   }, [isDragging, design, onDesignChange]);
 
-  const isBack = placementId === "fullBack";
+  const printArea = printAreas[placementId];
+  const mockupImage = mockupImages[placementId];
+  const isSleeve = placementId.includes("Sleeve");
 
   return (
     <div>
