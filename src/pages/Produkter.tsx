@@ -76,7 +76,7 @@ const Produkter = () => {
                 <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
                   {product.id === "basic-tshirt" ? (
                     <img
-                      src="/assets/russell-basic-tshirt.png"
+                      src="/russell-basic-tshirt.png"
                       alt={product[lang].name}
                       className="w-full h-full object-contain"
                     />
