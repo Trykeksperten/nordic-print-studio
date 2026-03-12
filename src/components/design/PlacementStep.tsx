@@ -27,12 +27,12 @@ const sizeOptions = [
   { value: "20-40", da: "20–40 cm (50 DKK)", en: "20–40 cm (50 DKK)" },
 ];
 
-// Print areas for each placement (relative coordinates in %)
-const printAreas: Record<string, { top: string; left: string; width: string; height: string }> = {
-  fullFront: { top: "22%", left: "30%", width: "40%", height: "30%" },
-  leftSleeve: { top: "40%", left: "12%", width: "22%", height: "18%" },
-  rightSleeve: { top: "40%", left: "66%", width: "22%", height: "18%" },
-  fullBack: { top: "22%", left: "30%", width: "40%", height: "35%" },
+// Default print areas (relative coordinates in %)
+const defaultPrintAreas: Record<string, { top: number; left: number; width: number; height: number }> = {
+  fullFront: { top: 22, left: 30, width: 40, height: 30 },
+  leftSleeve: { top: 40, left: 12, width: 22, height: 18 },
+  rightSleeve: { top: 40, left: 66, width: 22, height: 18 },
+  fullBack: { top: 22, left: 30, width: 40, height: 35 },
 };
 
 // Mockup images for each placement
@@ -47,6 +47,13 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
   const { lang } = useLanguage();
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
+
+  // Calibration: draggable print area
+  const defaults = defaultPrintAreas[placementId];
+  const [areaPos, setAreaPos] = useState({ top: defaults.top, left: defaults.left, width: defaults.width, height: defaults.height });
+  const [isDraggingArea, setIsDraggingArea] = useState(false);
+  const areaDragRef = useRef<{ startX: number; startY: number; startTop: number; startLeft: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,6 +81,7 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
     });
   };
 
+  // Design drag handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -81,16 +89,38 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
   }, [design.pos]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isDraggingArea && areaDragRef.current && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const dx = ((e.clientX - areaDragRef.current.startX) / rect.width) * 100;
+      const dy = ((e.clientY - areaDragRef.current.startY) / rect.height) * 100;
+      setAreaPos(prev => ({
+        ...prev,
+        top: Math.max(0, Math.min(100 - prev.height, areaDragRef.current!.startTop + dy)),
+        left: Math.max(0, Math.min(100 - prev.width, areaDragRef.current!.startLeft + dx)),
+      }));
+      return;
+    }
     if (!isDragging || !dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
     onDesignChange({ ...design, pos: { x: dragRef.current.startPosX + dx, y: dragRef.current.startPosY + dy } });
-  }, [isDragging, design, onDesignChange]);
+  }, [isDragging, isDraggingArea, design, onDesignChange]);
 
   const handleMouseUp = useCallback(() => {
+    if (isDraggingArea) {
+      setIsDraggingArea(false);
+      // Log final position for calibration
+      console.log(`📐 Print area for "${placementId}":`, JSON.stringify({
+        top: Math.round(areaPos.top),
+        left: Math.round(areaPos.left),
+        width: areaPos.width,
+        height: areaPos.height,
+      }));
+    }
     setIsDragging(false);
     dragRef.current = null;
-  }, []);
+    areaDragRef.current = null;
+  }, [isDraggingArea, placementId, areaPos]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -106,7 +136,15 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
     onDesignChange({ ...design, pos: { x: dragRef.current.startPosX + dx, y: dragRef.current.startPosY + dy } });
   }, [isDragging, design, onDesignChange]);
 
-  const printArea = printAreas[placementId];
+  // Area drag start
+  const handleAreaMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingArea(true);
+    areaDragRef.current = { startX: e.clientX, startY: e.clientY, startTop: areaPos.top, startLeft: areaPos.left };
+  }, [areaPos]);
+
+  const printArea = { top: `${areaPos.top}%`, left: `${areaPos.left}%`, width: `${areaPos.width}%`, height: `${areaPos.height}%` };
   const mockupImage = mockupImages[placementId];
   const isSleeve = placementId.includes("Sleeve");
 
@@ -123,7 +161,7 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
         onTouchMove={handleTouchMove}
         onTouchEnd={handleMouseUp}
       >
-        <div className={`relative mx-auto ${isSleeve ? "max-w-[200px]" : "max-w-[280px]"}`}>
+        <div ref={containerRef} className={`relative mx-auto ${isSleeve ? "max-w-[200px]" : "max-w-[280px]"}`}>
           {/* Hoodie image */}
           <img
             src={mockupImage}
@@ -132,11 +170,17 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
             draggable={false}
           />
 
-          {/* Print area overlay */}
+          {/* Print area overlay - draggable for calibration */}
           <div
-            className="absolute border-2 border-dashed border-primary/40 rounded-sm pointer-events-none"
+            className="absolute border-2 border-dashed border-primary/60 rounded-sm cursor-move bg-primary/5 hover:bg-primary/10 transition-colors"
             style={printArea}
-          />
+            onMouseDown={handleAreaMouseDown}
+            title={`top: ${Math.round(areaPos.top)}%, left: ${Math.round(areaPos.left)}%`}
+          >
+            <span className="absolute -top-5 left-0 text-[10px] font-mono bg-primary text-primary-foreground px-1 rounded whitespace-nowrap">
+              {Math.round(areaPos.top)}% / {Math.round(areaPos.left)}%
+            </span>
+          </div>
 
           {/* Uploaded design */}
           {design.file && (
