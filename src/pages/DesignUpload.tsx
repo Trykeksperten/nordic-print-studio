@@ -9,10 +9,10 @@ import PlacementStep, { type PlacementDesign } from "@/components/design/Placeme
 import PriceSummary from "@/components/design/PriceSummary";
 
 const steps = [
-  { id: "fullFront", printArea: { top: "20%", left: "25%", width: "50%", height: "35%" } },
-  { id: "leftSleeve", printArea: { top: "15%", left: "5%", width: "18%", height: "20%" } },
-  { id: "rightSleeve", printArea: { top: "15%", left: "77%", width: "18%", height: "20%" } },
-  { id: "fullBack", printArea: { top: "20%", left: "25%", width: "50%", height: "35%" } },
+  { id: "fullFront" },
+  { id: "leftSleeve" },
+  { id: "rightSleeve" },
+  { id: "fullBack" },
 ];
 
 const stepLabels: Record<string, { da: string; en: string }> = {
