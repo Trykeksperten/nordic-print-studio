@@ -144,7 +144,6 @@ const DesignUpload = () => {
                 <PlacementStep
                   placementId={steps[currentStep].id}
                   label={stepLabels[steps[currentStep].id][lang]}
-                  printArea={steps[currentStep].printArea}
                   design={designs[steps[currentStep].id]}
                   onDesignChange={(d) => handleDesignChange(steps[currentStep].id, d)}
                 />
