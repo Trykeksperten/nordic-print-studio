@@ -7,11 +7,12 @@ import { Mail, Phone, MapPin, Upload, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
+const ease = [0.32, 0.72, 0, 1] as const;
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true },
-  transition: { duration: 0.5, ease: [0.32, 0.72, 0, 1] },
+  transition: { duration: 0.5, ease },
 };
 
 const Kontakt = () => {

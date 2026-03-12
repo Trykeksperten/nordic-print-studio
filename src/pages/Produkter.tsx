@@ -69,7 +69,7 @@ const Produkter = () => {
                 initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.05, ease: [0.32, 0.72, 0, 1] }}
+                transition={{ duration: 0.5, delay: i * 0.05, ease: [0.32, 0.72, 0, 1] as const }}
                 className="bg-card rounded-2xl overflow-hidden card-shadow hover:card-shadow-hover transition-all duration-200 hover:-translate-y-1"
               >
                 {/* Placeholder for product image */}

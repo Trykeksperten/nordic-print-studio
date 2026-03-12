@@ -137,7 +137,7 @@ const Index = () => {
               <motion.div
                 key={i}
                 {...stagger}
-                transition={{ duration: 0.5, delay: i * 0.1, ease: [0.32, 0.72, 0, 1] }}
+                transition={{ duration: 0.5, delay: i * 0.1, ease }}
                 className="bg-card rounded-2xl p-8 card-shadow"
               >
                 <div className="flex gap-1 mb-4">
