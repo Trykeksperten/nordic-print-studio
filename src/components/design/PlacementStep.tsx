@@ -161,7 +161,7 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
         onTouchMove={handleTouchMove}
         onTouchEnd={handleMouseUp}
       >
-        <div className={`relative mx-auto ${isSleeve ? "max-w-[200px]" : "max-w-[280px]"}`}>
+        <div ref={containerRef} className={`relative mx-auto ${isSleeve ? "max-w-[200px]" : "max-w-[280px]"}`}>
           {/* Hoodie image */}
           <img
             src={mockupImage}
