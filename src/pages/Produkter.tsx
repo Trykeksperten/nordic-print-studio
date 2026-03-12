@@ -72,11 +72,19 @@ const Produkter = () => {
                 transition={{ duration: 0.5, delay: i * 0.05, ease: [0.32, 0.72, 0, 1] as const }}
                 className="bg-card rounded-2xl overflow-hidden card-shadow hover:card-shadow-hover transition-all duration-200 hover:-translate-y-1"
               >
-                {/* Placeholder for product image */}
-                <div className="aspect-square bg-muted flex items-center justify-center">
-                  <div className="text-6xl text-muted-foreground/20">
-                    {product.id.includes("hoodie") ? "🧥" : "👕"}
-                  </div>
+                {/* Product image */}
+                <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
+                  {product.id === "basic-tshirt" ? (
+                    <img
+                      src="/russell-basic-tshirt.png"
+                      alt={product[lang].name}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <div className="text-6xl text-muted-foreground/20">
+                      {product.id.includes("hoodie") ? "🧥" : "👕"}
+                    </div>
+                  )}
                 </div>
                 <div className="p-6">
                   <h3 className="text-lg font-bold mb-2">{product[lang].name}</h3>
