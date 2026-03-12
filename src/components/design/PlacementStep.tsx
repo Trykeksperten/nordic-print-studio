@@ -27,12 +27,12 @@ const sizeOptions = [
   { value: "20-40", da: "20–40 cm (50 DKK)", en: "20–40 cm (50 DKK)" },
 ];
 
-// Print areas for each placement (relative coordinates in %)
-const printAreas: Record<string, { top: string; left: string; width: string; height: string }> = {
-  fullFront: { top: "22%", left: "30%", width: "40%", height: "30%" },
-  leftSleeve: { top: "40%", left: "12%", width: "22%", height: "18%" },
-  rightSleeve: { top: "40%", left: "66%", width: "22%", height: "18%" },
-  fullBack: { top: "22%", left: "30%", width: "40%", height: "35%" },
+// Default print areas (relative coordinates in %)
+const defaultPrintAreas: Record<string, { top: number; left: number; width: number; height: number }> = {
+  fullFront: { top: 22, left: 30, width: 40, height: 30 },
+  leftSleeve: { top: 40, left: 12, width: 22, height: 18 },
+  rightSleeve: { top: 40, left: 66, width: 22, height: 18 },
+  fullBack: { top: 22, left: 30, width: 40, height: 35 },
 };
 
 // Mockup images for each placement
