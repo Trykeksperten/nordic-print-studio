@@ -170,11 +170,17 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
             draggable={false}
           />
 
-          {/* Print area overlay */}
+          {/* Print area overlay - draggable for calibration */}
           <div
-            className="absolute border-2 border-dashed border-primary/40 rounded-sm pointer-events-none"
+            className="absolute border-2 border-dashed border-primary/60 rounded-sm cursor-move bg-primary/5 hover:bg-primary/10 transition-colors"
             style={printArea}
-          />
+            onMouseDown={handleAreaMouseDown}
+            title={`top: ${Math.round(areaPos.top)}%, left: ${Math.round(areaPos.left)}%`}
+          >
+            <span className="absolute -top-5 left-0 text-[10px] font-mono bg-primary text-primary-foreground px-1 rounded whitespace-nowrap">
+              {Math.round(areaPos.top)}% / {Math.round(areaPos.left)}%
+            </span>
+          </div>
 
           {/* Uploaded design */}
           {design.file && (
