@@ -19,8 +19,8 @@ const products = [
   },
   {
     id: "standard-hoodie",
-    da: { name: "Russell Hoodie Standard", desc: "Komfortabel hoodie i mellemvægt. Ideel til firmatøj og merchandise." },
-    en: { name: "Russell Hoodie Standard", desc: "Comfortable mid-weight hoodie. Ideal for corporate wear and merchandise." },
+    da: { name: "Russell Hoodie Basic", desc: "Komfortabel hoodie i mellemvægt. Ideel til firmatøj og merchandise." },
+    en: { name: "Russell Hoodie Basic", desc: "Comfortable mid-weight hoodie. Ideal for corporate wear and merchandise." },
     sizes: ["XS", "S", "M", "L", "XL", "2XL"],
   },
   {
@@ -83,6 +83,12 @@ const Produkter = () => {
                   ) : product.id === "heavyweight-tshirt" ? (
                     <img
                       src="/russell-heavyweight-tshirt.png"
+                      alt={product[lang].name}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : product.id === "standard-hoodie" ? (
+                    <img
+                      src="/russell-hoodie-basic.png"
                       alt={product[lang].name}
                       className="w-full h-full object-contain"
                     />
