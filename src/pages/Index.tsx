@@ -85,7 +85,7 @@ const Index = () => {
               <motion.div
                 key={service.key}
                 {...stagger}
-                transition={{ duration: 0.5, delay: i * 0.1, ease: [0.32, 0.72, 0, 1] }}
+                transition={{ duration: 0.5, delay: i * 0.1, ease }}
               >
                 <Link to={service.link}>
                   <div className="bg-card rounded-2xl p-8 card-shadow hover:card-shadow-hover transition-all duration-200 hover:-translate-y-1 h-full">
