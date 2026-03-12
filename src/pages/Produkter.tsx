@@ -86,6 +86,12 @@ const Produkter = () => {
                       alt={product[lang].name}
                       className="w-full h-full object-contain"
                     />
+                  ) : product.id === "standard-hoodie" ? (
+                    <img
+                      src="/russell-hoodie-basic.png"
+                      alt={product[lang].name}
+                      className="w-full h-full object-contain"
+                    />
                   ) : (
                     <div className="text-6xl text-muted-foreground/20">
                       {product.id.includes("hoodie") ? "🧥" : "👕"}
