@@ -1,6 +1,9 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, Move } from "lucide-react";
+import { Upload, Move, X } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
+import hoodieFront from "@/assets/hoodie-front.png";
+import hoodieBack from "@/assets/hoodie-back.png";
+import hoodieSleeve from "@/assets/hoodie-sleeve.png";
 
 export interface PlacementDesign {
   file: string | null;
@@ -13,7 +16,6 @@ export interface PlacementDesign {
 interface PlacementStepProps {
   placementId: string;
   label: string;
-  printArea: { top: string; left: string; width: string; height: string };
   design: PlacementDesign;
   onDesignChange: (design: PlacementDesign) => void;
 }
@@ -25,7 +27,23 @@ const sizeOptions = [
   { value: "20-40", da: "20–40 cm (50 DKK)", en: "20–40 cm (50 DKK)" },
 ];
 
-const PlacementStep = ({ placementId, label, printArea, design, onDesignChange }: PlacementStepProps) => {
+// Print areas for each placement (relative coordinates in %)
+const printAreas: Record<string, { top: string; left: string; width: string; height: string }> = {
+  fullFront: { top: "22%", left: "30%", width: "40%", height: "30%" },
+  leftSleeve: { top: "40%", left: "12%", width: "22%", height: "18%" },
+  rightSleeve: { top: "40%", left: "66%", width: "22%", height: "18%" },
+  fullBack: { top: "22%", left: "30%", width: "40%", height: "35%" },
+};
+
+// Mockup images for each placement
+const mockupImages: Record<string, string> = {
+  fullFront: hoodieFront,
+  leftSleeve: hoodieSleeve,
+  rightSleeve: hoodieSleeve,
+  fullBack: hoodieBack,
+};
+
+const PlacementStep = ({ placementId, label, design, onDesignChange }: PlacementStepProps) => {
   const { lang } = useLanguage();
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
@@ -44,6 +62,16 @@ const PlacementStep = ({ placementId, label, printArea, design, onDesignChange }
       });
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleRemoveDesign = () => {
+    onDesignChange({
+      file: null,
+      fileName: "",
+      pos: { x: 0, y: 0 },
+      scale: 1,
+      sizeCategory: "1-6",
+    });
   };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -78,41 +106,35 @@ const PlacementStep = ({ placementId, label, printArea, design, onDesignChange }
     onDesignChange({ ...design, pos: { x: dragRef.current.startPosX + dx, y: dragRef.current.startPosY + dy } });
   }, [isDragging, design, onDesignChange]);
 
-  const isBack = placementId === "fullBack";
+  const printArea = printAreas[placementId];
+  const mockupImage = mockupImages[placementId];
+  const isSleeve = placementId.includes("Sleeve");
 
   return (
     <div>
       <h3 className="text-xl font-bold mb-4">{label}</h3>
 
-      {/* Mockup */}
+      {/* Mockup with real hoodie image */}
       <div
-        className="bg-card rounded-2xl card-shadow p-6 relative select-none"
+        className="bg-card rounded-2xl card-shadow p-4 sm:p-6 relative select-none overflow-hidden"
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleMouseUp}
       >
-        <div className="relative aspect-[3/4] max-w-xs mx-auto">
-          <svg viewBox="0 0 300 380" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M75 50 L40 80 L20 140 L60 150 L75 100 L75 350 L225 350 L225 100 L240 150 L280 140 L260 80 L225 50 L195 30 C185 50 165 60 150 60 C135 60 115 50 105 30 L75 50Z"
-              fill="hsl(220, 15%, 92%)" stroke="hsl(220, 10%, 80%)" strokeWidth="1.5"
-            />
-            <path
-              d="M105 30 C115 50 135 60 150 60 C165 60 185 50 195 30"
-              fill="none" stroke="hsl(220, 10%, 80%)" strokeWidth="1.5"
-            />
-            {isBack && (
-              <text x="150" y="370" textAnchor="middle" fontSize="10" fill="hsl(220, 10%, 70%)">
-                {lang === "da" ? "BAGSIDE" : "BACK"}
-              </text>
-            )}
-          </svg>
+        <div className={`relative mx-auto ${isSleeve ? "max-w-[200px]" : "max-w-[280px]"}`}>
+          {/* Hoodie image */}
+          <img
+            src={mockupImage}
+            alt="Hoodie mockup"
+            className="w-full h-auto object-contain"
+            draggable={false}
+          />
 
-          {/* Print area */}
+          {/* Print area overlay */}
           <div
-            className="absolute border-2 border-dashed border-primary/30 rounded-lg pointer-events-none"
+            className="absolute border-2 border-dashed border-primary/40 rounded-sm pointer-events-none"
             style={printArea}
           />
 
@@ -137,14 +159,14 @@ const PlacementStep = ({ placementId, label, printArea, design, onDesignChange }
 
         {design.file && (
           <>
-            <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Move size={14} />
               {lang === "da" ? "Træk og tilpas dit design" : "Drag and adjust your design"}
             </div>
             <div className="mt-2 flex items-center justify-center gap-4">
               <label className="text-xs text-muted-foreground">{lang === "da" ? "Størrelse" : "Size"}</label>
               <input
-                type="range" min="0.3" max="2" step="0.1"
+                type="range" min="0.3" max="2.5" step="0.1"
                 value={design.scale}
                 onChange={(e) => onDesignChange({ ...design, scale: parseFloat(e.target.value) })}
                 className="w-32 accent-primary"
@@ -156,13 +178,30 @@ const PlacementStep = ({ placementId, label, printArea, design, onDesignChange }
 
       {/* File upload */}
       <div className="mt-4">
-        <label className="flex items-center justify-center gap-2 bg-card rounded-xl card-shadow p-5 cursor-pointer hover:card-shadow-hover transition-all border-2 border-dashed border-border hover:border-primary/30">
-          <Upload size={18} className="text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            {design.fileName || (lang === "da" ? "Klik for at uploade (PNG, SVG, AI)" : "Click to upload (PNG, SVG, AI)")}
-          </span>
-          <input type="file" accept=".png,.svg,.ai,image/png,image/svg+xml" onChange={handleFileUpload} className="hidden" />
-        </label>
+        {design.file ? (
+          <div className="flex items-center justify-between bg-card rounded-xl card-shadow p-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <img src={design.file} alt="" className="w-10 h-10 object-contain rounded bg-muted shrink-0" />
+              <span className="text-sm text-muted-foreground truncate">{design.fileName}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleRemoveDesign}
+              className="p-2 hover:bg-muted rounded-lg transition-colors shrink-0"
+              title={lang === "da" ? "Fjern design" : "Remove design"}
+            >
+              <X size={18} className="text-muted-foreground" />
+            </button>
+          </div>
+        ) : (
+          <label className="flex items-center justify-center gap-2 bg-card rounded-xl card-shadow p-5 cursor-pointer hover:card-shadow-hover transition-all border-2 border-dashed border-border hover:border-primary/30">
+            <Upload size={18} className="text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              {lang === "da" ? "Klik for at uploade (PNG, SVG, AI)" : "Click to upload (PNG, SVG, AI)"}
+            </span>
+            <input type="file" accept=".png,.svg,.ai,image/png,image/svg+xml" onChange={handleFileUpload} className="hidden" />
+          </label>
+        )}
       </div>
 
       {/* Size category for pricing */}
