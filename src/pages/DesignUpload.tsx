@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import Layout from "@/components/Layout";
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import PlacementStep, { type PlacementDesign } from "@/components/design/PlacementStep";
+import PlacementStep, { type PlacementDesign, emptyDesign } from "@/components/design/PlacementStep";
 import PriceSummary from "@/components/design/PriceSummary";
 
 const steps = [
@@ -30,40 +30,37 @@ const productOptions = [
   { value: "performance-tshirt", da: "TriDri Performance T-shirt", en: "TriDri Performance T-shirt" },
 ];
 
-const emptyDesign = (): PlacementDesign => ({
-  file: null,
-  fileName: "",
-  pos: { x: 0, y: 0 },
-  scale: 1,
-  sizeCategory: "1-6",
-});
-
 const DesignUpload = () => {
   const { t, lang } = useLanguage();
   const [currentStep, setCurrentStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [quantity, setQuantity] = useState(10);
-  const [designs, setDesigns] = useState<Record<string, PlacementDesign>>(() => {
-    const init: Record<string, PlacementDesign> = {};
-    steps.forEach((s) => { init[s.id] = emptyDesign(); });
+  const [designs, setDesigns] = useState<Record<string, PlacementDesign[]>>(() => {
+    const init: Record<string, PlacementDesign[]> = {};
+    steps.forEach((s) => { init[s.id] = [emptyDesign()]; });
     return init;
   });
 
   const totalSteps = steps.length;
   const isFormStep = currentStep >= totalSteps;
-  const activeDesigns = Object.entries(designs).filter(([, d]) => d.file);
+
+  // Count total uploaded designs across all placements
+  const allActiveDesigns: { placementId: string; design: PlacementDesign }[] = [];
+  Object.entries(designs).forEach(([id, list]) => {
+    list.forEach((d) => { if (d.file) allActiveDesigns.push({ placementId: id, design: d }); });
+  });
 
   const placementLabelsResolved = Object.fromEntries(
     Object.entries(stepLabels).map(([k, v]) => [k, v[lang]])
   );
 
-  const handleDesignChange = (id: string, design: PlacementDesign) => {
-    setDesigns((prev) => ({ ...prev, [id]: design }));
+  const handleDesignsChange = (id: string, newDesigns: PlacementDesign[]) => {
+    setDesigns((prev) => ({ ...prev, [id]: newDesigns }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (activeDesigns.length === 0) {
+    if (allActiveDesigns.length === 0) {
       toast.error(lang === "da" ? "Upload mindst ét design" : "Upload at least one design");
       return;
     }
@@ -103,7 +100,8 @@ const DesignUpload = () => {
           {/* Step indicators */}
           <div className="flex items-center justify-center gap-2 mb-10 flex-wrap">
             {steps.map((s, i) => {
-              const hasDesign = designs[s.id].file !== null;
+              const hasDesign = designs[s.id].some(d => d.file !== null);
+              const designCount = designs[s.id].filter(d => d.file !== null).length;
               return (
                 <button
                   key={s.id}
@@ -120,7 +118,12 @@ const DesignUpload = () => {
                     {i + 1}
                   </span>
                   {stepLabels[s.id][lang]}
-                  {hasDesign && <CheckCircle2 size={14} />}
+                  {hasDesign && (
+                    <span className="flex items-center gap-1">
+                      <CheckCircle2 size={14} />
+                      {designCount > 1 && <span className="text-xs">×{designCount}</span>}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -144,8 +147,8 @@ const DesignUpload = () => {
                 <PlacementStep
                   placementId={steps[currentStep].id}
                   label={stepLabels[steps[currentStep].id][lang]}
-                  design={designs[steps[currentStep].id]}
-                  onDesignChange={(d) => handleDesignChange(steps[currentStep].id, d)}
+                  designs={designs[steps[currentStep].id]}
+                  onDesignsChange={(d) => handleDesignsChange(steps[currentStep].id, d)}
                 />
               ) : (
                 <div>
@@ -194,9 +197,9 @@ const DesignUpload = () => {
             <div className="space-y-6">
               <div className="bg-card rounded-2xl card-shadow p-6">
                 <h3 className="text-lg font-bold mb-4">
-                  {lang === "da" ? "Dit design" : "Your Design"}
+                  {lang === "da" ? "Dine designs" : "Your Designs"}
                 </h3>
-                {activeDesigns.length === 0 ? (
+                {allActiveDesigns.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     {lang === "da"
                       ? "Du har ikke uploadet noget design endnu. Upload mindst ét design for at fortsætte."
@@ -204,16 +207,22 @@ const DesignUpload = () => {
                   </p>
                 ) : (
                   <div className="space-y-3">
-                    {activeDesigns.map(([id, d]) => (
-                      <div key={id} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                        <img src={d.file!} alt="" className="w-10 h-10 object-contain rounded" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{placementLabelsResolved[id]}</p>
-                          <p className="text-xs text-muted-foreground truncate">{d.fileName}</p>
+                    {allActiveDesigns.map(({ placementId, design }, i) => {
+                      const placementDesigns = designs[placementId].filter(d => d.file);
+                      const logoNum = placementDesigns.length > 1
+                        ? ` – Logo ${designs[placementId].indexOf(design) + 1}`
+                        : "";
+                      return (
+                        <div key={`${placementId}-${i}`} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                          <img src={design.file!} alt="" className="w-10 h-10 object-contain rounded" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{placementLabelsResolved[placementId]}{logoNum}</p>
+                            <p className="text-xs text-muted-foreground truncate">{design.fileName}</p>
+                          </div>
+                          <CheckCircle2 size={16} className="text-primary shrink-0" />
                         </div>
-                        <CheckCircle2 size={16} className="text-primary shrink-0" />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

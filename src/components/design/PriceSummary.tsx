@@ -2,7 +2,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import type { PlacementDesign } from "./PlacementStep";
 
 interface PriceSummaryProps {
-  designs: Record<string, PlacementDesign>;
+  designs: Record<string, PlacementDesign[]>;
   quantity: number;
   placementLabels: Record<string, string>;
 }
@@ -17,18 +17,25 @@ const sizePriceMap: Record<string, number> = {
 const FIRST_SETUP = 295;
 const ADDITIONAL_SETUP = 150;
 
-export function calculateTotal(designs: Record<string, PlacementDesign>, quantity: number) {
-  const activePlacements = Object.entries(designs).filter(([, d]) => d.file);
-  if (activePlacements.length === 0) return { setupTotal: 0, printTotal: 0, total: 0, details: [] };
+export function calculateTotal(designs: Record<string, PlacementDesign[]>, quantity: number) {
+  // Flatten all designs with uploaded files
+  const allActive: { placementId: string; design: PlacementDesign; index: number }[] = [];
+  Object.entries(designs).forEach(([id, list]) => {
+    list.forEach((d, i) => {
+      if (d.file) allActive.push({ placementId: id, design: d, index: i });
+    });
+  });
+
+  if (allActive.length === 0) return { setupTotal: 0, printTotal: 0, total: 0, details: [] };
 
   let setupTotal = 0;
-  const details: { id: string; setup: number; printPrice: number }[] = [];
+  const details: { placementId: string; index: number; setup: number; printPrice: number }[] = [];
 
-  activePlacements.forEach(([id, d], i) => {
+  allActive.forEach((item, i) => {
     const setup = i === 0 ? FIRST_SETUP : ADDITIONAL_SETUP;
-    const printPrice = sizePriceMap[d.sizeCategory] || 30;
+    const printPrice = sizePriceMap[item.design.sizeCategory] || 30;
     setupTotal += setup;
-    details.push({ id, setup, printPrice });
+    details.push({ placementId: item.placementId, index: item.index, setup, printPrice });
   });
 
   const printTotal = details.reduce((sum, d) => sum + d.printPrice * quantity, 0);
@@ -41,6 +48,13 @@ const PriceSummary = ({ designs, quantity, placementLabels }: PriceSummaryProps)
 
   if (details.length === 0) return null;
 
+  const getLabel = (d: { placementId: string; index: number }) => {
+    const base = placementLabels[d.placementId] || d.placementId;
+    const count = designs[d.placementId]?.filter(x => x.file).length || 0;
+    if (count > 1) return `${base} – Logo ${d.index + 1}`;
+    return base;
+  };
+
   return (
     <div className="bg-accent rounded-xl p-5 space-y-3">
       <h4 className="text-sm font-bold text-accent-foreground">
@@ -48,18 +62,18 @@ const PriceSummary = ({ designs, quantity, placementLabels }: PriceSummaryProps)
       </h4>
       <div className="space-y-1.5 text-sm">
         {details.map((d, i) => (
-          <div key={d.id} className="flex justify-between">
+          <div key={`setup-${d.placementId}-${d.index}`} className="flex justify-between">
             <span className="text-muted-foreground">
-              {placementLabels[d.id]} – {lang === "da" ? "opstart" : "setup"}{" "}
+              {getLabel(d)} – {lang === "da" ? "opstart" : "setup"}{" "}
               {i === 0 ? `(${lang === "da" ? "første" : "first"})` : ""}
             </span>
             <span className="font-medium">{d.setup} DKK</span>
           </div>
         ))}
         {details.map((d) => (
-          <div key={`print-${d.id}`} className="flex justify-between">
+          <div key={`print-${d.placementId}-${d.index}`} className="flex justify-between">
             <span className="text-muted-foreground">
-              {placementLabels[d.id]} – {d.printPrice} DKK × {quantity} {lang === "da" ? "stk" : "pcs"}
+              {getLabel(d)} – {d.printPrice} DKK × {quantity} {lang === "da" ? "stk" : "pcs"}
             </span>
             <span className="font-medium">{d.printPrice * quantity} DKK</span>
           </div>

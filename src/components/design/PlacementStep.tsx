@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, Move, X } from "lucide-react";
+import { Upload, Move, X, Plus } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { Button } from "@/components/ui/button";
 import hoodieFront from "@/assets/hoodie-front.png";
 import hoodieBack from "@/assets/hoodie-back.png";
 import hoodieSleeve from "@/assets/hoodie-sleeve.png";
@@ -16,8 +17,8 @@ export interface PlacementDesign {
 interface PlacementStepProps {
   placementId: string;
   label: string;
-  design: PlacementDesign;
-  onDesignChange: (design: PlacementDesign) => void;
+  designs: PlacementDesign[];
+  onDesignsChange: (designs: PlacementDesign[]) => void;
 }
 
 const sizeOptions = [
@@ -35,7 +36,6 @@ const defaultPrintAreas: Record<string, { top: number; left: number; width: numb
   fullBack: { top: 22, left: 30, width: 40, height: 35 },
 };
 
-// Mockup images for each placement
 const mockupImages: Record<string, string> = {
   fullFront: hoodieFront,
   leftSleeve: hoodieSleeve,
@@ -43,25 +43,42 @@ const mockupImages: Record<string, string> = {
   fullBack: hoodieBack,
 };
 
-const PlacementStep = ({ placementId, label, design, onDesignChange }: PlacementStepProps) => {
+export const emptyDesign = (): PlacementDesign => ({
+  file: null,
+  fileName: "",
+  pos: { x: 0, y: 0 },
+  scale: 1,
+  sizeCategory: "1-6",
+});
+
+const PlacementStep = ({ placementId, label, designs, onDesignsChange }: PlacementStepProps) => {
   const { lang } = useLanguage();
+  const [activeIndex, setActiveIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
 
-  // Calibration: draggable print area
+  // Calibration state
   const defaults = defaultPrintAreas[placementId];
   const [areaPos, setAreaPos] = useState({ top: defaults.top, left: defaults.left, width: defaults.width, height: defaults.height });
   const [isDraggingArea, setIsDraggingArea] = useState(false);
   const areaDragRef = useRef<{ startX: number; startY: number; startTop: number; startLeft: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const currentDesign = designs[activeIndex] || emptyDesign();
+
+  const updateDesign = (index: number, updated: PlacementDesign) => {
+    const newDesigns = [...designs];
+    newDesigns[index] = updated;
+    onDesignsChange(newDesigns);
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      onDesignChange({
-        ...design,
+      updateDesign(activeIndex, {
+        ...currentDesign,
         file: ev.target?.result as string,
         fileName: file.name,
         pos: { x: 0, y: 0 },
@@ -71,22 +88,29 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
     reader.readAsDataURL(file);
   };
 
-  const handleRemoveDesign = () => {
-    onDesignChange({
-      file: null,
-      fileName: "",
-      pos: { x: 0, y: 0 },
-      scale: 1,
-      sizeCategory: "1-6",
-    });
+  const handleRemoveDesign = (index: number) => {
+    if (designs.length <= 1) {
+      updateDesign(0, emptyDesign());
+    } else {
+      const newDesigns = designs.filter((_, i) => i !== index);
+      onDesignsChange(newDesigns);
+      if (activeIndex >= newDesigns.length) {
+        setActiveIndex(newDesigns.length - 1);
+      }
+    }
+  };
+
+  const handleAddDesign = () => {
+    onDesignsChange([...designs, emptyDesign()]);
+    setActiveIndex(designs.length);
   };
 
   // Design drag handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
-    dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: design.pos.x, startPosY: design.pos.y };
-  }, [design.pos]);
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: currentDesign.pos.x, startPosY: currentDesign.pos.y };
+  }, [currentDesign.pos]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (isDraggingArea && areaDragRef.current && containerRef.current) {
@@ -103,18 +127,15 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
     if (!isDragging || !dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
-    onDesignChange({ ...design, pos: { x: dragRef.current.startPosX + dx, y: dragRef.current.startPosY + dy } });
-  }, [isDragging, isDraggingArea, design, onDesignChange]);
+    updateDesign(activeIndex, { ...currentDesign, pos: { x: dragRef.current.startPosX + dx, y: dragRef.current.startPosY + dy } });
+  }, [isDragging, isDraggingArea, currentDesign, activeIndex]);
 
   const handleMouseUp = useCallback(() => {
     if (isDraggingArea) {
       setIsDraggingArea(false);
-      // Log final position for calibration
       console.log(`📐 Print area for "${placementId}":`, JSON.stringify({
-        top: Math.round(areaPos.top),
-        left: Math.round(areaPos.left),
-        width: areaPos.width,
-        height: areaPos.height,
+        top: Math.round(areaPos.top), left: Math.round(areaPos.left),
+        width: areaPos.width, height: areaPos.height,
       }));
     }
     setIsDragging(false);
@@ -125,18 +146,17 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     setIsDragging(true);
-    dragRef.current = { startX: touch.clientX, startY: touch.clientY, startPosX: design.pos.x, startPosY: design.pos.y };
-  }, [design.pos]);
+    dragRef.current = { startX: touch.clientX, startY: touch.clientY, startPosX: currentDesign.pos.x, startPosY: currentDesign.pos.y };
+  }, [currentDesign.pos]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!isDragging || !dragRef.current) return;
     const touch = e.touches[0];
     const dx = touch.clientX - dragRef.current.startX;
     const dy = touch.clientY - dragRef.current.startY;
-    onDesignChange({ ...design, pos: { x: dragRef.current.startPosX + dx, y: dragRef.current.startPosY + dy } });
-  }, [isDragging, design, onDesignChange]);
+    updateDesign(activeIndex, { ...currentDesign, pos: { x: dragRef.current.startPosX + dx, y: dragRef.current.startPosY + dy } });
+  }, [isDragging, currentDesign, activeIndex]);
 
-  // Area drag start
   const handleAreaMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -147,12 +167,35 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
   const printArea = { top: `${areaPos.top}%`, left: `${areaPos.left}%`, width: `${areaPos.width}%`, height: `${areaPos.height}%` };
   const mockupImage = mockupImages[placementId];
   const isSleeve = placementId.includes("Sleeve");
+  const uploadedDesigns = designs.filter(d => d.file);
 
   return (
     <div>
       <h3 className="text-xl font-bold mb-4">{label}</h3>
 
-      {/* Mockup with real hoodie image */}
+      {/* Logo tabs when multiple */}
+      {designs.length > 1 && (
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          {designs.map((d, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveIndex(i)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                activeIndex === i
+                  ? "bg-primary text-primary-foreground"
+                  : d.file
+                  ? "bg-primary/15 text-primary"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {lang === "da" ? `Logo ${i + 1}` : `Logo ${i + 1}`}
+              {d.file && <span className="w-1.5 h-1.5 rounded-full bg-current" />}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Mockup */}
       <div
         className="bg-card rounded-2xl card-shadow p-4 sm:p-6 relative select-none overflow-hidden"
         onMouseMove={handleMouseMove}
@@ -162,13 +205,7 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
         onTouchEnd={handleMouseUp}
       >
         <div ref={containerRef} className={`relative mx-auto ${isSleeve ? "max-w-[200px]" : "max-w-[280px]"}`}>
-          {/* Hoodie image */}
-          <img
-            src={mockupImage}
-            alt="Hoodie mockup"
-            className="w-full h-auto object-contain"
-            draggable={false}
-          />
+          <img src={mockupImage} alt="Hoodie mockup" className="w-full h-auto object-contain" draggable={false} />
 
           {/* Print area overlay - draggable for calibration */}
           <div
@@ -182,26 +219,27 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
             </span>
           </div>
 
-          {/* Uploaded design */}
-          {design.file && (
-            <div className="absolute cursor-move" style={printArea}>
+          {/* All uploaded designs rendered on mockup */}
+          {uploadedDesigns.map((d, i) => (
+            <div key={i} className="absolute" style={{ ...printArea, pointerEvents: "none" }}>
               <img
-                src={design.file}
-                alt="Design preview"
+                src={d.file!}
+                alt={`Design ${i + 1}`}
                 className="w-full h-full object-contain"
                 style={{
-                  transform: `translate(${design.pos.x}px, ${design.pos.y}px) scale(${design.scale})`,
-                  pointerEvents: "auto",
+                  transform: `translate(${d.pos.x}px, ${d.pos.y}px) scale(${d.scale})`,
+                  pointerEvents: designs.indexOf(d) === activeIndex ? "auto" : "none",
+                  opacity: designs.indexOf(d) === activeIndex ? 1 : 0.5,
                 }}
-                onMouseDown={handleMouseDown}
-                onTouchStart={handleTouchStart}
+                onMouseDown={designs.indexOf(d) === activeIndex ? handleMouseDown : undefined}
+                onTouchStart={designs.indexOf(d) === activeIndex ? handleTouchStart : undefined}
                 draggable={false}
               />
             </div>
-          )}
+          ))}
         </div>
 
-        {design.file && (
+        {currentDesign.file && (
           <>
             <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Move size={14} />
@@ -211,8 +249,8 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
               <label className="text-xs text-muted-foreground">{lang === "da" ? "Størrelse" : "Size"}</label>
               <input
                 type="range" min="0.3" max="2.5" step="0.1"
-                value={design.scale}
-                onChange={(e) => onDesignChange({ ...design, scale: parseFloat(e.target.value) })}
+                value={currentDesign.scale}
+                onChange={(e) => updateDesign(activeIndex, { ...currentDesign, scale: parseFloat(e.target.value) })}
                 className="w-32 accent-primary"
               />
             </div>
@@ -220,17 +258,17 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
         )}
       </div>
 
-      {/* File upload */}
+      {/* File upload / current file */}
       <div className="mt-4">
-        {design.file ? (
+        {currentDesign.file ? (
           <div className="flex items-center justify-between bg-card rounded-xl card-shadow p-4">
             <div className="flex items-center gap-3 min-w-0">
-              <img src={design.file} alt="" className="w-10 h-10 object-contain rounded bg-muted shrink-0" />
-              <span className="text-sm text-muted-foreground truncate">{design.fileName}</span>
+              <img src={currentDesign.file} alt="" className="w-10 h-10 object-contain rounded bg-muted shrink-0" />
+              <span className="text-sm text-muted-foreground truncate">{currentDesign.fileName}</span>
             </div>
             <button
               type="button"
-              onClick={handleRemoveDesign}
+              onClick={() => handleRemoveDesign(activeIndex)}
               className="p-2 hover:bg-muted rounded-lg transition-colors shrink-0"
               title={lang === "da" ? "Fjern design" : "Remove design"}
             >
@@ -248,20 +286,35 @@ const PlacementStep = ({ placementId, label, design, onDesignChange }: Placement
         )}
       </div>
 
+      {/* Add extra logo button */}
+      {currentDesign.file && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleAddDesign}
+          className="mt-3 w-full"
+        >
+          <Plus size={16} className="mr-1.5" />
+          {lang === "da" ? "Tilføj ekstra logo" : "Add extra logo"}
+        </Button>
+      )}
+
       {/* Size category for pricing */}
-      {design.file && (
+      {currentDesign.file && (
         <div className="mt-4">
           <label className="block text-sm font-medium mb-2">
             {lang === "da" ? "Trykstørrelse" : "Print size"}
+            {designs.length > 1 && ` (Logo ${activeIndex + 1})`}
           </label>
           <div className="grid grid-cols-2 gap-2">
             {sizeOptions.map((s) => (
               <button
                 key={s.value}
                 type="button"
-                onClick={() => onDesignChange({ ...design, sizeCategory: s.value })}
+                onClick={() => updateDesign(activeIndex, { ...currentDesign, sizeCategory: s.value })}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  design.sizeCategory === s.value
+                  currentDesign.sizeCategory === s.value
                     ? "bg-primary text-primary-foreground"
                     : "bg-card card-shadow text-foreground hover:card-shadow-hover"
                 }`}
