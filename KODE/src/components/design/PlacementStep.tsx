@@ -348,7 +348,7 @@ const sleeveMirrorOverridesByProduct: Partial<
     leftSleeve: true,
   },
   "performance-tshirt": {
-    rightSleeve: true,
+    rightSleeve: false,
   },
   "byb-ladies-fluffy-sweatpants": {
     leftSleeve: false,
@@ -361,7 +361,8 @@ export const getMockupSourceAndTransform = (
   colorValue: string | undefined,
   placementId: string
 ) => {
-  const shouldSwapSleeveSources = productId !== "byb-ladies-fluffy-sweatpants";
+  const shouldSwapSleeveSources =
+    productId !== "byb-ladies-fluffy-sweatpants" && productId !== "performance-tshirt";
   const imagePlacementId =
     shouldSwapSleeveSources && placementId === "leftSleeve"
       ? "rightSleeve"
@@ -715,7 +716,8 @@ const PlacementStep = ({
 
   const printArea = { top: `${areaPos.top}%`, left: `${areaPos.left}%`, width: `${areaPos.width}%`, height: `${areaPos.height}%` };
   const productMockups = mockupImagesByProduct[productId] ?? mockupImagesByProduct["basic-tshirt"];
-  const shouldSwapSleeveSources = productId !== "byb-ladies-fluffy-sweatpants";
+  const shouldSwapSleeveSources =
+    productId !== "byb-ladies-fluffy-sweatpants" && productId !== "performance-tshirt";
   const imagePlacementId =
     shouldSwapSleeveSources && placementId === "leftSleeve"
       ? "rightSleeve"

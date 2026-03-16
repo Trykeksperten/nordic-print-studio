@@ -12,13 +12,17 @@ const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
 const KEYWORDS = {
   front: ["front", "forfra"],
-  back: ["ryg", "back"],
+  back: ["ryg", "back", "bag"],
   sleeve: ["ærme", "aerme", "sleeve", "side"],
 };
 
 const ORDERED_VALUES = [
   "white",
   "black",
+  "royal-blue",
+  "sapphire-blue",
+  "silver-melange",
+  "turquoise",
   "blue-steel",
   "blue-melange",
   "bright-green",
@@ -48,6 +52,10 @@ const KNOWN_COLORS = [
   { aliases: ["hvid", "white"], value: "white", da: "Hvid", en: "White", hex: "#F7F7F5", priority: 10 },
   { aliases: ["sort", "black"], value: "black", da: "Sort", en: "Black", hex: "#1C1C1C", priority: 10 },
   { aliases: ["blue steel"], value: "blue-steel", da: "Blue Steel", en: "Blue Steel", hex: "#5B6E80", priority: 10 },
+  { aliases: ["royal blue"], value: "royal-blue", da: "Royal Blue", en: "Royal Blue", hex: "#2563EB", priority: 10 },
+  { aliases: ["sapphire blue"], value: "sapphire-blue", da: "Sapphire Blue", en: "Sapphire Blue", hex: "#1E3A8A", priority: 10 },
+  { aliases: ["silver malange", "silver melange"], value: "silver-melange", da: "Silver Malange", en: "Silver Melange", hex: "#94A3B8", priority: 10 },
+  { aliases: ["turquoise"], value: "turquoise", da: "Turquoise", en: "Turquoise", hex: "#14B8A6", priority: 10 },
   { aliases: ["blue melange"], value: "blue-melange", da: "Blue Melange", en: "Blue Melange", hex: "#6A89A8", priority: 10 },
   { aliases: ["bright green"], value: "bright-green", da: "Bright Green", en: "Bright Green", hex: "#42B883", priority: 10 },
   { aliases: ["bright purple"], value: "bright-purple", da: "Bright Purple", en: "Bright Purple", hex: "#7A4FB7", priority: 10 },
@@ -91,7 +99,7 @@ const PRODUCT_SOURCES = [
       "../PRODUKTER/TriDri Performance Herre",
     ],
     filePrefix: "tridri-performance",
-    sleeveSourceSide: "right",
+    sleeveSourceSide: "left",
   },
   {
     productId: "premium-hoodie",

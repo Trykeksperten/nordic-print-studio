@@ -218,10 +218,40 @@ export const autoBasicTshirtColorMockups: Record<string, Partial<Record<"fullFro
 
 export const autoPerformanceTshirtVariants: AutoProductVariant[] = [
   {
+    "value": "white",
+    "da": "Hvid",
+    "en": "White",
+    "hex": "#F7F7F5"
+  },
+  {
     "value": "black",
     "da": "Sort",
     "en": "Black",
     "hex": "#1C1C1C"
+  },
+  {
+    "value": "royal-blue",
+    "da": "Royal Blue",
+    "en": "Royal Blue",
+    "hex": "#2563EB"
+  },
+  {
+    "value": "sapphire-blue",
+    "da": "Sapphire Blue",
+    "en": "Sapphire Blue",
+    "hex": "#1E3A8A"
+  },
+  {
+    "value": "silver-melange",
+    "da": "Silver Malange",
+    "en": "Silver Melange",
+    "hex": "#94A3B8"
+  },
+  {
+    "value": "turquoise",
+    "da": "Turquoise",
+    "en": "Turquoise",
+    "hex": "#14B8A6"
   },
   {
     "value": "blue-steel",
@@ -340,6 +370,12 @@ export const autoPerformanceTshirtColorMockups: Record<string, Partial<Record<"f
     "rightSleeve": "/tridri-performance-yellow-right-sleeve.png",
     "fullBack": "/tridri-performance-yellow-back.png"
   },
+  "white": {
+    "fullFront": "/tridri-performance-white-front.png",
+    "leftSleeve": "/tridri-performance-white-left-sleeve.png",
+    "rightSleeve": "/tridri-performance-white-right-sleeve.png",
+    "fullBack": "/tridri-performance-white-back.png"
+  },
   "neon-green": {
     "fullFront": "/tridri-performance-neon-green-front.png",
     "leftSleeve": "/tridri-performance-neon-green-left-sleeve.png",
@@ -370,11 +406,35 @@ export const autoPerformanceTshirtColorMockups: Record<string, Partial<Record<"f
     "rightSleeve": "/tridri-performance-orange-right-sleeve.png",
     "fullBack": "/tridri-performance-orange-back.png"
   },
+  "royal-blue": {
+    "fullFront": "/tridri-performance-royal-blue-front.png",
+    "leftSleeve": "/tridri-performance-royal-blue-left-sleeve.png",
+    "rightSleeve": "/tridri-performance-royal-blue-right-sleeve.png",
+    "fullBack": "/tridri-performance-royal-blue-back.png"
+  },
+  "sapphire-blue": {
+    "fullFront": "/tridri-performance-sapphire-blue-front.png",
+    "leftSleeve": "/tridri-performance-sapphire-blue-left-sleeve.png",
+    "rightSleeve": "/tridri-performance-sapphire-blue-right-sleeve.png",
+    "fullBack": "/tridri-performance-sapphire-blue-back.png"
+  },
+  "silver-melange": {
+    "fullFront": "/tridri-performance-silver-melange-front.png",
+    "leftSleeve": "/tridri-performance-silver-melange-left-sleeve.png",
+    "rightSleeve": "/tridri-performance-silver-melange-right-sleeve.png",
+    "fullBack": "/tridri-performance-silver-melange-back.png"
+  },
   "black": {
     "fullFront": "/tridri-performance-black-front.png",
     "leftSleeve": "/tridri-performance-black-left-sleeve.png",
     "rightSleeve": "/tridri-performance-black-right-sleeve.png",
     "fullBack": "/tridri-performance-black-back.png"
+  },
+  "turquoise": {
+    "fullFront": "/tridri-performance-turquoise-front.png",
+    "leftSleeve": "/tridri-performance-turquoise-left-sleeve.png",
+    "rightSleeve": "/tridri-performance-turquoise-right-sleeve.png",
+    "fullBack": "/tridri-performance-turquoise-back.png"
   }
 };
 
