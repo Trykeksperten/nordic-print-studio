@@ -1187,6 +1187,7 @@ export const getVisualScale = (
   productId?: string,
   placementId?: string
 ) => {
+  const globalPreviewScaleBoost = 1.4;
   const cm = scale * Math.max(0.1, baseLogoWidthCm);
   let multiplier = visualScaleAnchors.upTo12;
 
@@ -1210,5 +1211,5 @@ export const getVisualScale = (
     productId === "standard-hoodie" || productId === "premium-hoodie" || productId === "authentic-sweat"
       ? 0.78
       : 1;
-  return scale * multiplier * productMultiplier * backPlacementMultiplier * realisticPreviewCompensation;
+  return scale * multiplier * productMultiplier * backPlacementMultiplier * realisticPreviewCompensation * globalPreviewScaleBoost;
 };
