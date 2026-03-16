@@ -768,7 +768,11 @@ const DesignUpload = () => {
       return next;
     });
 
-    toast.success(lang === "da" ? "Tilføjet til kurv" : "Added to cart");
+    toast.success(
+      isEditingExistingCartItem
+        ? (lang === "da" ? "Design opdateret" : "Design updated")
+        : (lang === "da" ? "Tilføjet til kurv" : "Added to cart")
+    );
     setDesigns(createEmptyDesignMap());
     setSizeQuantities(createSizeQuantityMap(selectedProductOption.sizes));
     setCurrentStep(0);
