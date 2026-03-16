@@ -6,7 +6,6 @@ const Footer = () => {
   const { t } = useLanguage();
 
   const navLinks = [
-    { path: "/", label: t("nav.home") },
     { path: "/storformatprint", label: t("nav.largeFormat") },
     { path: "/tekstiltryk/produkter", label: t("nav.textilePrint") },
     { path: "/kontakt", label: t("nav.contact") },

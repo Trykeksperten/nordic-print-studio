@@ -4,7 +4,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/i18n/LanguageContext";
-import Index from "./pages/Index";
 import Storformatprint from "./pages/Storformatprint";
 import PrintDesign from "./pages/PrintDesign";
 import Produkter from "./pages/Produkter";
@@ -24,7 +23,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Navigate to="/tekstiltryk/produkter" replace />} />
             <Route path="/tekstiltryk" element={<Navigate to="/tekstiltryk/produkter" replace />} />
             <Route path="/storformatprint" element={<Storformatprint />} />
             <Route path="/print/design" element={<PrintDesign />} />

@@ -59,7 +59,6 @@ const Header = () => {
   }, [syncCartCount]);
 
   const navItems = [
-    { path: "/", label: t("nav.home") },
     { path: "/tekstiltryk/produkter", label: t("nav.textilePrint") },
     { path: "/storformatprint", label: t("nav.largeFormat") },
     { path: "/kontakt", label: t("nav.contact") },
@@ -69,7 +68,7 @@ const Header = () => {
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="container mx-auto flex items-center justify-between h-16 px-4 lg:px-8">
         {/* Logo */}
-        <Link to="/" className="font-bold text-xl tracking-tight text-foreground">
+        <Link to="/tekstiltryk/produkter" className="font-bold text-xl tracking-tight text-foreground">
           Trykeksperten
         </Link>
 
@@ -80,9 +79,7 @@ const Header = () => {
               key={item.path}
               to={item.path}
               className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                item.path === "/"
-                  ? location.pathname === item.path
-                  : item.path === "/tekstiltryk/produkter"
+                item.path === "/tekstiltryk/produkter"
                   ? location.pathname === "/tekstiltryk/produkter" || location.pathname.startsWith("/tekstiltryk/")
                   : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
                   ? "bg-accent text-accent-foreground"
@@ -121,9 +118,7 @@ const Header = () => {
               to={item.path}
               onClick={() => setMobileOpen(false)}
               className={`block px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
-                item.path === "/"
-                  ? location.pathname === item.path
-                  : item.path === "/tekstiltryk/produkter"
+                item.path === "/tekstiltryk/produkter"
                   ? location.pathname === "/tekstiltryk/produkter" || location.pathname.startsWith("/tekstiltryk/")
                   : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
                   ? "bg-accent text-accent-foreground"
