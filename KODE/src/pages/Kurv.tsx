@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { defaultPrintAreas, getMockupSourceAndTransform, getVisualScale } from "@/components/design/PlacementStep";
 import { calculateOrderSetupFromPlacementCount, calculateTotal } from "@/components/design/PriceSummary";
@@ -193,6 +194,7 @@ const Kurv = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<CartDesignEntry[]>(() => readDesignCart());
   const [generatedMockups, setGeneratedMockups] = useState<Record<string, Array<{ placementId: string; dataUrl: string }>>>({});
+  const [zoomedMockup, setZoomedMockup] = useState<{ src: string; label: string } | null>(null);
 
   const sortedItems = useMemo(
     () => items.slice().sort((a, b) => b.updatedAt - a.updatedAt),
@@ -308,9 +310,21 @@ const Kurv = () => {
                   <div key={item.id} className="bg-card rounded-2xl card-shadow p-4">
                     <div className="flex items-start gap-3">
                       {item.previewMockupDataUrl ? (
-                        <img src={item.previewMockupDataUrl} alt="" className="h-16 w-14 rounded object-contain bg-muted shrink-0" />
+                        <button
+                          type="button"
+                          className="shrink-0"
+                          onClick={() => setZoomedMockup({ src: item.previewMockupDataUrl!, label: item.selectedProductName })}
+                        >
+                          <img src={item.previewMockupDataUrl} alt="" className="h-16 w-14 rounded object-contain bg-muted" />
+                        </button>
                       ) : fallbackProductImage ? (
-                        <img src={fallbackProductImage} alt="" className="h-16 w-14 rounded object-contain bg-muted shrink-0" />
+                        <button
+                          type="button"
+                          className="shrink-0"
+                          onClick={() => setZoomedMockup({ src: fallbackProductImage, label: item.selectedProductName })}
+                        >
+                          <img src={fallbackProductImage} alt="" className="h-16 w-14 rounded object-contain bg-muted" />
+                        </button>
                       ) : (
                         <div className="h-16 w-14 rounded bg-muted shrink-0" />
                       )}
@@ -369,7 +383,18 @@ const Kurv = () => {
                       <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
                         {(item.placementMockups?.length ? item.placementMockups : generatedMockups[item.id] ?? []).map((mockup) => (
                           <div key={`${item.id}-${mockup.placementId}`} className="rounded-lg border border-border p-2">
-                            <img src={mockup.dataUrl} alt="" className="w-full aspect-[3/4] object-contain rounded bg-muted" />
+                            <button
+                              type="button"
+                              className="w-full"
+                              onClick={() =>
+                                setZoomedMockup({
+                                  src: mockup.dataUrl,
+                                  label: `${item.selectedProductName} · ${getPlacementLabel(mockup.placementId, lang)}`,
+                                })
+                              }
+                            >
+                              <img src={mockup.dataUrl} alt="" className="w-full aspect-[3/4] object-contain rounded bg-muted" />
+                            </button>
                             <p className="mt-1 text-[11px] text-muted-foreground truncate">
                               {getPlacementLabel(mockup.placementId, lang)}
                             </p>
@@ -408,6 +433,18 @@ const Kurv = () => {
           </div>
         </div>
       </section>
+      <Dialog open={Boolean(zoomedMockup)} onOpenChange={(open) => !open && setZoomedMockup(null)}>
+        <DialogContent className="max-w-4xl p-4">
+          <DialogTitle className="text-sm">{zoomedMockup?.label ?? ""}</DialogTitle>
+          {zoomedMockup?.src && (
+            <img
+              src={zoomedMockup.src}
+              alt={zoomedMockup.label}
+              className="w-full max-h-[80vh] object-contain rounded bg-muted"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
