@@ -91,7 +91,7 @@ const PRODUCT_SOURCES = [
       "../PRODUKTER/TriDri Performance Herre",
     ],
     filePrefix: "tridri-performance",
-    sleeveSourceSide: "left",
+    sleeveSourceSide: "right",
   },
   {
     productId: "premium-hoodie",
