@@ -310,18 +310,7 @@ const Kurv = () => {
                 return (
                   <div key={item.id} className="bg-card rounded-2xl card-shadow p-4">
                     <div className="flex items-start gap-3">
-                      {item.previewMockupDataUrl ? (
-                        <button
-                          type="button"
-                          className="shrink-0 relative"
-                          onClick={() => setZoomedMockup({ src: item.previewMockupDataUrl!, label: item.selectedProductName })}
-                        >
-                          <img src={item.previewMockupDataUrl} alt="" className="h-16 w-14 rounded object-contain bg-muted" />
-                          <span className="absolute bottom-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-background/90 text-muted-foreground">
-                            <Search size={10} />
-                          </span>
-                        </button>
-                      ) : fallbackProductImage ? (
+                      {fallbackProductImage ? (
                         <button
                           type="button"
                           className="shrink-0 relative"
