@@ -4,7 +4,6 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { motion } from "framer-motion";
 import Layout from "@/components/Layout";
 import { productPricingById } from "@/lib/productPricing";
-import { autoBybLadiesFluffySweatpantsCardImages } from "@/lib/autoFolderProductVariants";
 import { resolveAssetPath } from "@/components/design/PlacementStep";
 
 const products = [
@@ -88,8 +87,8 @@ const productCardImages: Record<string, { front: string; back: string }> = {
     back: "/model-premium-hoodie-back.jpg",
   },
   "byb-ladies-fluffy-sweatpants": {
-    front: autoBybLadiesFluffySweatpantsCardImages?.front ?? "/BY291_Mw1-14274 for.webp",
-    back: autoBybLadiesFluffySweatpantsCardImages?.back ?? "/BY291_Mw2-14274 bag.webp",
+    front: "/BY291_Mw1-14274 for.webp",
+    back: "/BY291_Mw2-14274 bag.webp",
   },
 };
 
