@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from "react";
-import { Upload, Move, X, Plus } from "lucide-react";
+import { Upload, Move, X } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -396,6 +396,7 @@ const PlacementStep = ({
     if (!file) return;
     const targetIndex = activeIndex;
     const targetDesign = designs[targetIndex] || emptyDesign();
+    const shouldAppendNew = Boolean(targetDesign.file);
     const fileName = file.name.toLowerCase();
     const validExtension = fileName.endsWith(".png") || fileName.endsWith(".svg") || fileName.endsWith(".ai");
     if (!validExtension) {
@@ -405,13 +406,20 @@ const PlacementStep = ({
     }
     const reader = new FileReader();
     reader.onload = (ev) => {
-      updateDesign(targetIndex, {
-        ...targetDesign,
+      const nextDesign: PlacementDesign = {
+        ...(shouldAppendNew ? emptyDesign() : targetDesign),
         file: ev.target?.result as string,
         fileName: file.name,
         pos: { x: 0, y: 0 },
-        scale: getDefaultScale(targetDesign.sizeCategory, baseLogoWidthCm),
-      });
+        scale: getDefaultScale((shouldAppendNew ? "1-6" : targetDesign.sizeCategory), baseLogoWidthCm),
+      };
+      if (shouldAppendNew) {
+        const nextDesigns = [...designs, nextDesign];
+        onDesignsChange(nextDesigns);
+        setActiveIndex(nextDesigns.length - 1);
+      } else {
+        updateDesign(targetIndex, nextDesign);
+      }
       e.target.value = "";
     };
     reader.readAsDataURL(file);
@@ -427,11 +435,6 @@ const PlacementStep = ({
         setActiveIndex(newDesigns.length - 1);
       }
     }
-  };
-
-  const handleAddDesign = () => {
-    onDesignsChange([...designs, emptyDesign()]);
-    setActiveIndex(designs.length);
   };
 
   const handleLogoWidthCmChange = (rawValue: string) => {
@@ -654,13 +657,6 @@ const PlacementStep = ({
                 </span>
                 <input type="file" accept=".png,.svg,.ai,image/png,image/svg+xml" onChange={handleFileUpload} className="hidden" />
               </label>
-            </div>
-
-            <div className="mt-3 mb-3">
-              <Button type="button" variant="outline" size="sm" onClick={handleAddDesign} className="w-full">
-                <Plus size={16} className="mr-1.5" />
-                {lang === "da" ? "tilføj eksta logo" : "+ add extra logo"}
-              </Button>
             </div>
 
             {uploadedDesigns.length > 0 ? (
