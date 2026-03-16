@@ -1215,19 +1215,6 @@ const DesignUpload = () => {
                           {lang === "da" ? "Tilbage" : "Back"}
                         </Button>
                       )}
-                      <div>
-                        <label className="block text-xs font-medium mb-1">{t("designPage.product")}</label>
-                        <select
-                          value={selectedProduct}
-                          onChange={(e) => handleProductChange(e.target.value)}
-                          className="w-full h-10 bg-card rounded-lg px-2.5 text-xs ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 outline-none card-shadow"
-                        >
-                          {productOptions.map((p) => (
-                            <option key={p.value} value={p.value}>{p[lang]}</option>
-                          ))}
-                        </select>
-                      </div>
-
                       {!hasEnteredDesign ? (
                         <>
                           <div>
