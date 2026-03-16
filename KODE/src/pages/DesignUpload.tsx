@@ -632,23 +632,34 @@ const DesignUpload = () => {
         </Button>
       )}
       {currentStep < totalSteps && (
-        <Button
-          onClick={() => {
-            if (currentStep < totalSteps - 1) {
-              goToStep(currentStep + 1);
-              return;
-            }
-            void handleAddColorDesignToCart();
-          }}
-          className="flex-1 xl:flex-none"
-        >
-          {currentStep < totalSteps - 1
-            ? (lang === "da" ? "Næste placering" : "Next Placement")
-            : isEditingExistingCartItem
-            ? (lang === "da" ? "Gem" : "Save")
-            : (lang === "da" ? "Tilføj til kurv" : "Add to cart")}
-          <ChevronRight size={16} />
-        </Button>
+        <>
+          {(!isEditingExistingCartItem || currentStep < totalSteps - 1) && (
+            <Button
+              onClick={() => {
+                if (currentStep < totalSteps - 1) {
+                  goToStep(currentStep + 1);
+                  return;
+                }
+                void handleAddColorDesignToCart();
+              }}
+              className="flex-1 xl:flex-none"
+            >
+              {currentStep < totalSteps - 1
+                ? (lang === "da" ? "Næste placering" : "Next Placement")
+                : (lang === "da" ? "Tilføj til kurv" : "Add to cart")}
+              <ChevronRight size={16} />
+            </Button>
+          )}
+          {isEditingExistingCartItem && (
+            <Button
+              type="button"
+              onClick={() => void handleAddColorDesignToCart()}
+              className="flex-1 xl:flex-none"
+            >
+              {lang === "da" ? "Gem" : "Save"}
+            </Button>
+          )}
+        </>
       )}
     </div>
   ) : null;
