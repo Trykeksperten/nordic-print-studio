@@ -629,12 +629,18 @@ const DesignUpload = () => {
       )}
       {currentStep < totalSteps && (
         <Button
-          onClick={() => goToStep(currentStep + 1)}
+          onClick={() => {
+            if (currentStep < totalSteps - 1) {
+              goToStep(currentStep + 1);
+              return;
+            }
+            void handleAddColorDesignToCart();
+          }}
           className="flex-1 xl:flex-none"
         >
           {currentStep < totalSteps - 1
             ? (lang === "da" ? "Næste placering" : "Next Placement")
-            : (lang === "da" ? "Gå til bestilling" : "Go to Order")}
+            : (lang === "da" ? "Tilføj til kurv" : "Add to cart")}
           <ChevronRight size={16} />
         </Button>
       )}
