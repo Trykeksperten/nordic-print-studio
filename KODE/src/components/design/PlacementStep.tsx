@@ -334,20 +334,49 @@ const snapCenterLockedProducts = new Set([
   "byb-ladies-fluffy-sweatpants",
 ]);
 
+const forceMirrorRightSleeveProducts = new Set([
+  "basic-tshirt",
+  "heavyweight-tshirt",
+  "standard-hoodie",
+  "premium-hoodie",
+]);
+
+const sleeveMirrorOverridesByProduct: Partial<
+  Record<string, Partial<Record<"leftSleeve" | "rightSleeve", boolean>>>
+> = {
+  "byb-oversized-acid-wash-tee": {
+    leftSleeve: true,
+  },
+  "performance-tshirt": {
+    rightSleeve: true,
+  },
+  "byb-ladies-fluffy-sweatpants": {
+    leftSleeve: false,
+    rightSleeve: true,
+  },
+};
+
 export const getMockupSourceAndTransform = (
   productId: string,
   colorValue: string | undefined,
   placementId: string
 ) => {
+  const shouldSwapSleeveSources = productId !== "byb-ladies-fluffy-sweatpants";
+  const imagePlacementId =
+    shouldSwapSleeveSources && placementId === "leftSleeve"
+      ? "rightSleeve"
+      : shouldSwapSleeveSources && placementId === "rightSleeve"
+      ? "leftSleeve"
+      : placementId;
   const productMockups = mockupImagesByProduct[productId] ?? mockupImagesByProduct["basic-tshirt"];
   const exactColorMockup = colorValue
-    ? colorSpecificMockups[productId]?.[colorValue]?.[placementId]
+    ? colorSpecificMockups[productId]?.[colorValue]?.[imagePlacementId]
     : undefined;
-  const defaultColorMockup = colorSpecificMockups[productId]?.default?.[placementId];
+  const defaultColorMockup = colorSpecificMockups[productId]?.default?.[imagePlacementId];
   const baseMockupImage =
     exactColorMockup ??
     defaultColorMockup ??
-    productMockups[placementId] ??
+    productMockups[imagePlacementId] ??
     productMockups.fullFront;
 
   const isSharedSideMockup =
@@ -361,11 +390,21 @@ export const getMockupSourceAndTransform = (
       colorSpecificMockups[productId]?.[colorValue!]?.rightSleeve;
   const usesSharedSleeveImage = isSharedSideMockup || sameSleeveImageForColor;
   const sharedSleeveSourceSide = sharedSleeveSourceSideByProduct[productId] ?? "left";
-  const mirrorMockup = usesSharedSleeveImage
+  const mirrorFromSharedSleeveLogic = usesSharedSleeveImage
     ? sharedSleeveSourceSide === "left"
       ? placementId === "rightSleeve"
       : placementId === "leftSleeve"
     : false;
+  const forceMirrorLeftSleeve = placementId === "leftSleeve";
+  const forceMirrorRightSleeve =
+    placementId === "rightSleeve" && forceMirrorRightSleeveProducts.has(productId);
+  const mirrorMockupDefault =
+    mirrorFromSharedSleeveLogic || forceMirrorLeftSleeve || forceMirrorRightSleeve;
+  const mirrorOverride =
+    (placementId === "leftSleeve" || placementId === "rightSleeve")
+      ? sleeveMirrorOverridesByProduct[productId]?.[placementId]
+      : undefined;
+  const mirrorMockup = mirrorOverride ?? mirrorMockupDefault;
   const mockupTransform = `${mirrorMockup ? "scaleX(-1) " : ""}scale(1)`;
 
   return { src: resolveAssetPath(baseMockupImage), transform: mockupTransform };
@@ -676,15 +715,22 @@ const PlacementStep = ({
 
   const printArea = { top: `${areaPos.top}%`, left: `${areaPos.left}%`, width: `${areaPos.width}%`, height: `${areaPos.height}%` };
   const productMockups = mockupImagesByProduct[productId] ?? mockupImagesByProduct["basic-tshirt"];
+  const shouldSwapSleeveSources = productId !== "byb-ladies-fluffy-sweatpants";
+  const imagePlacementId =
+    shouldSwapSleeveSources && placementId === "leftSleeve"
+      ? "rightSleeve"
+      : shouldSwapSleeveSources && placementId === "rightSleeve"
+      ? "leftSleeve"
+      : placementId;
   const exactColorMockup = selectedColor
-    ? colorSpecificMockups[productId]?.[selectedColor.value]?.[placementId]
+    ? colorSpecificMockups[productId]?.[selectedColor.value]?.[imagePlacementId]
     : undefined;
-  const defaultColorMockup = colorSpecificMockups[productId]?.default?.[placementId];
+  const defaultColorMockup = colorSpecificMockups[productId]?.default?.[imagePlacementId];
   const baseMockupImage =
-    customMockups?.[placementId] ??
+    customMockups?.[imagePlacementId] ??
     exactColorMockup ??
     defaultColorMockup ??
-    productMockups[placementId] ??
+    productMockups[imagePlacementId] ??
     productMockups.fullFront;
   const [recoloredMockup, setRecoloredMockup] = useState<string | null>(null);
   const resolvedBaseMockupImage = resolveAssetPath(baseMockupImage);
@@ -701,11 +747,21 @@ const PlacementStep = ({
       colorSpecificMockups[productId]?.[selectedColor!.value]?.rightSleeve;
   const usesSharedSleeveImage = isSharedSideMockup || sameSleeveImageForColor;
   const sharedSleeveSourceSide = sharedSleeveSourceSideByProduct[productId] ?? "left";
-  const mirrorMockup = usesSharedSleeveImage
+  const mirrorFromSharedSleeveLogic = usesSharedSleeveImage
     ? sharedSleeveSourceSide === "left"
       ? placementId === "rightSleeve"
       : placementId === "leftSleeve"
     : false;
+  const forceMirrorLeftSleeve = placementId === "leftSleeve";
+  const forceMirrorRightSleeve =
+    placementId === "rightSleeve" && forceMirrorRightSleeveProducts.has(productId);
+  const mirrorMockupDefault =
+    mirrorFromSharedSleeveLogic || forceMirrorLeftSleeve || forceMirrorRightSleeve;
+  const mirrorOverride =
+    (placementId === "leftSleeve" || placementId === "rightSleeve")
+      ? sleeveMirrorOverridesByProduct[productId]?.[placementId]
+      : undefined;
+  const mirrorMockup = mirrorOverride ?? mirrorMockupDefault;
   const mockupTransform = `${mirrorMockup ? "scaleX(-1) " : ""}scale(1)`;
   const uploadedDesigns = designs.filter(d => d.file);
 
