@@ -97,6 +97,7 @@ const edgeFillScaleByProduct: Record<string, string> = {
   "heavyweight-tshirt": "scale-[1.16]",
   "standard-hoodie": "scale-[1.14]",
   "premium-hoodie": "scale-[1.14]",
+  "byb-ladies-fluffy-sweatpants": "scale-[1.18]",
 };
 
 const Produkter = () => {
@@ -132,8 +133,8 @@ const Produkter = () => {
                 initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.05, ease: [0.32, 0.72, 0, 1] as const }}
-                className="group bg-white rounded-2xl overflow-hidden card-shadow hover:card-shadow-hover transition-all duration-200 hover:-translate-y-1 cursor-pointer"
+              transition={{ duration: 0.5, delay: i * 0.05, ease: [0.32, 0.72, 0, 1] as const }}
+                className="group bg-white rounded-2xl overflow-hidden card-shadow hover:card-shadow-hover transition-all duration-200 hover:-translate-y-1 cursor-pointer flex flex-col h-full"
                 role="button"
                 tabIndex={0}
                 onClick={() => navigate(`/tekstiltryk/setup/${product.id}`)}
@@ -167,7 +168,7 @@ const Produkter = () => {
                     />
                   </div>
                 </Link>
-                <div className="p-6">
+                <div className="p-6 flex flex-col flex-1">
                   <h3 className="text-lg font-bold mb-2">{product[lang].name}</h3>
                   <p className="text-muted-foreground text-sm mb-4">{product[lang].desc}</p>
                   <p className="text-sm font-semibold mb-4">
@@ -177,7 +178,7 @@ const Produkter = () => {
                     <span className="text-xs font-medium text-muted-foreground">{sizesLabel}: </span>
                     <span className="text-xs text-muted-foreground">{product.sizes.join(", ")}</span>
                   </div>
-                  <Link to={`/tekstiltryk/setup/${product.id}`}>
+                  <Link to={`/tekstiltryk/setup/${product.id}`} className="mt-auto">
                     <Button variant="default" size="sm" className="w-full">
                       {ctaLabel}
                     </Button>
