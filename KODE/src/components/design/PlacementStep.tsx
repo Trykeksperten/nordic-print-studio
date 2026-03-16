@@ -15,7 +15,9 @@ export const resolveAssetPath = (src: string) => {
   if (!src) return src;
   if (/^(https?:|data:|blob:)/i.test(src)) return src;
   if (!src.startsWith("/")) return src;
-  return `${import.meta.env.BASE_URL}${src.slice(1)}`;
+  const baseUrl = import.meta.env.BASE_URL || "/";
+  if (baseUrl !== "/" && (src === baseUrl || src.startsWith(baseUrl))) return src;
+  return `${baseUrl}${src.slice(1)}`;
 };
 
 export interface PlacementDesign {
@@ -550,7 +552,8 @@ const PlacementStep = ({
     productMockups[placementId] ??
     productMockups.fullFront;
   const [recoloredMockup, setRecoloredMockup] = useState<string | null>(null);
-  const mockupImage = recoloredMockup ?? baseMockupImage;
+  const resolvedBaseMockupImage = resolveAssetPath(baseMockupImage);
+  const mockupImage = recoloredMockup ?? resolvedBaseMockupImage;
   const isSharedSideMockup =
     !customMockups?.[placementId] &&
     !exactColorMockup &&
@@ -582,7 +585,7 @@ const PlacementStep = ({
       return;
     }
 
-    colorizeMockupImage(baseMockupImage, selectedColor.hex, selectedColor.value)
+    colorizeMockupImage(resolvedBaseMockupImage, selectedColor.hex, selectedColor.value)
       .then((dataUrl) => {
         if (!cancelled) setRecoloredMockup(dataUrl);
       })
@@ -593,7 +596,7 @@ const PlacementStep = ({
     return () => {
       cancelled = true;
     };
-  }, [baseMockupImage, customMockups, exactColorMockup, placementId, selectedColor]);
+  }, [customMockups, exactColorMockup, placementId, resolvedBaseMockupImage, selectedColor]);
 
   return (
     <div>
