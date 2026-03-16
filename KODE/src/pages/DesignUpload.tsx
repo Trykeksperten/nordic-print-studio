@@ -464,6 +464,10 @@ const DesignUpload = () => {
     () => createOpenDesignId(selectedProduct, selectedColor),
     [selectedProduct, selectedColor]
   );
+  const isEditingExistingCartItem = useMemo(
+    () => Boolean(requestedCartItem && designCart.some((item) => item.id === requestedCartItem)),
+    [requestedCartItem, designCart]
+  );
   const placementLabelsResolved = Object.fromEntries(
     Object.entries(activeStepLabels).map(([k, v]) => [k, v[lang]])
   );
@@ -640,6 +644,8 @@ const DesignUpload = () => {
         >
           {currentStep < totalSteps - 1
             ? (lang === "da" ? "Næste placering" : "Next Placement")
+            : isEditingExistingCartItem
+            ? (lang === "da" ? "Gem" : "Save")
             : (lang === "da" ? "Tilføj til kurv" : "Add to cart")}
           <ChevronRight size={16} />
         </Button>
@@ -1332,7 +1338,9 @@ const DesignUpload = () => {
                   onClick={handleAddColorDesignToCart}
                   className="w-full"
                 >
-                  {lang === "da" ? "Tilføj til kurv" : "Add to cart"}
+                  {isEditingExistingCartItem
+                    ? (lang === "da" ? "Gem" : "Save")
+                    : (lang === "da" ? "Tilføj til kurv" : "Add to cart")}
                 </Button>
               )}
               {!isFormStep && hasEnteredDesign && (
