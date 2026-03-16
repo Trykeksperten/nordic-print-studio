@@ -70,10 +70,14 @@ const CENTER_SNAP_THRESHOLD_PX = 14;
 
 const getGarmentCenterPercent = (productId: string, placementId: string) => {
   const isFrontOrBack = placementId === "fullFront" || placementId === "fullBack";
+  const isSleeve = placementId === "leftSleeve" || placementId === "rightSleeve";
   const isHoodieOrSweat =
     productId === "standard-hoodie" || productId === "premium-hoodie" || productId === "authentic-sweat";
   if (isFrontOrBack && isHoodieOrSweat) {
     return { x: 50, y: 58 };
+  }
+  if (isSleeve && isHoodieOrSweat) {
+    return { x: 54, y: 50 };
   }
   return { x: 50, y: 50 };
 };
