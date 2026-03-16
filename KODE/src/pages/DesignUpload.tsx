@@ -673,11 +673,41 @@ const DesignUpload = () => {
     setDesigns((prev) => ({ ...prev, [id]: newDesigns }));
   };
 
-  const handleActivateUploadedDesign = (placementId: string, designIndex: number) => {
-    const nextStep = steps.findIndex((step) => step.id === placementId);
-    if (nextStep < 0) return;
-    setDesignFocusRequest({ placementId, designIndex, nonce: Date.now() });
-    setCurrentStep(nextStep);
+  const handleReuseUploadedDesign = (sourceDesign: PlacementDesign) => {
+    if (!sourceDesign.file) return;
+    const targetPlacementId = steps[currentStep]?.id;
+    if (!targetPlacementId) return;
+
+    setDesigns((prev) => {
+      const existing = prev[targetPlacementId] ?? [emptyDesign()];
+      const nextElement: PlacementDesign = {
+        file: sourceDesign.file,
+        fileName: sourceDesign.fileName,
+        pos: { x: 0, y: 0 },
+        scale: sourceDesign.scale,
+        sizeCategory: sourceDesign.sizeCategory,
+      };
+
+      let nextPlacementDesigns: PlacementDesign[];
+      let insertedIndex = 0;
+      if (existing.length === 1 && !existing[0]?.file) {
+        nextPlacementDesigns = [nextElement];
+      } else {
+        nextPlacementDesigns = [...existing, nextElement];
+        insertedIndex = nextPlacementDesigns.length - 1;
+      }
+
+      setDesignFocusRequest({
+        placementId: targetPlacementId,
+        designIndex: insertedIndex,
+        nonce: Date.now(),
+      });
+
+      return {
+        ...prev,
+        [targetPlacementId]: nextPlacementDesigns,
+      };
+    });
   };
 
   const handleSizeQuantityChange = (size: string, value: number) => {
@@ -1315,7 +1345,7 @@ const DesignUpload = () => {
                                   <button
                                     type="button"
                                     key={`${placementId}-${i}`}
-                                    onClick={() => handleActivateUploadedDesign(placementId, designs[placementId].indexOf(design))}
+                                    onClick={() => handleReuseUploadedDesign(design)}
                                     className="w-full flex items-center gap-2 p-2 bg-muted rounded-lg text-left"
                                   >
                                     <img src={design.file!} alt="" className="w-8 h-8 object-contain rounded" />
