@@ -68,6 +68,16 @@ const SHIRT_WIDTH_CM = 45;
 const TORSO_WIDTH_PERCENT_OF_IMAGE = 58;
 const CENTER_SNAP_THRESHOLD_PX = 14;
 
+const getGarmentCenterPercent = (productId: string, placementId: string) => {
+  const isFrontOrBack = placementId === "fullFront" || placementId === "fullBack";
+  const isHoodieOrSweat =
+    productId === "standard-hoodie" || productId === "premium-hoodie" || productId === "authentic-sweat";
+  if (isFrontOrBack && isHoodieOrSweat) {
+    return { x: 50, y: 58 };
+  }
+  return { x: 50, y: 50 };
+};
+
 // Default print areas (relative coordinates in %)
 export const defaultPrintAreas: Record<string, { top: number; left: number; width: number; height: number }> = {
   fullFront: { top: 25, left: 25, width: 40, height: 30 },
@@ -495,14 +505,19 @@ const PlacementStep = ({
     const dy = e.clientY - dragRef.current.startY;
     const rawX = dragRef.current.startPosX + dx;
     const rawY = dragRef.current.startPosY + dy;
-    const snapX = Math.abs(rawX) <= CENTER_SNAP_THRESHOLD_PX;
-    const snapY = Math.abs(rawY) <= CENTER_SNAP_THRESHOLD_PX;
+    const rect = containerRef.current?.getBoundingClientRect();
+    const printAreaWidthPx = rect ? (rect.width * areaPos.width) / 100 : 0;
+    const printAreaHeightPx = rect ? (rect.height * areaPos.height) / 100 : 0;
+    const targetOffsetX = ((snapGuidePosition.x - 50) / 100) * printAreaWidthPx;
+    const targetOffsetY = ((snapGuidePosition.y - 50) / 100) * printAreaHeightPx;
+    const snapX = Math.abs(rawX - targetOffsetX) <= CENTER_SNAP_THRESHOLD_PX;
+    const snapY = Math.abs(rawY - targetOffsetY) <= CENTER_SNAP_THRESHOLD_PX;
     setCenterGuide({ x: snapX, y: snapY });
     updateDesign(activeIndex, {
       ...currentDesign,
-      pos: { x: snapX ? 0 : rawX, y: snapY ? 0 : rawY },
+      pos: { x: snapX ? targetOffsetX : rawX, y: snapY ? targetOffsetY : rawY },
     });
-  }, [isDragging, isDraggingArea, isResizingArea, currentDesign, activeIndex, areaPos.left, areaPos.top]);
+  }, [isDragging, isDraggingArea, isResizingArea, currentDesign, activeIndex, areaPos.width, areaPos.height, snapGuidePosition.x, snapGuidePosition.y]);
 
   const handleMouseUp = useCallback(() => {
     if (isDraggingArea || isResizingArea) {
@@ -533,14 +548,19 @@ const PlacementStep = ({
     const dy = touch.clientY - dragRef.current.startY;
     const rawX = dragRef.current.startPosX + dx;
     const rawY = dragRef.current.startPosY + dy;
-    const snapX = Math.abs(rawX) <= CENTER_SNAP_THRESHOLD_PX;
-    const snapY = Math.abs(rawY) <= CENTER_SNAP_THRESHOLD_PX;
+    const rect = containerRef.current?.getBoundingClientRect();
+    const printAreaWidthPx = rect ? (rect.width * areaPos.width) / 100 : 0;
+    const printAreaHeightPx = rect ? (rect.height * areaPos.height) / 100 : 0;
+    const targetOffsetX = ((snapGuidePosition.x - 50) / 100) * printAreaWidthPx;
+    const targetOffsetY = ((snapGuidePosition.y - 50) / 100) * printAreaHeightPx;
+    const snapX = Math.abs(rawX - targetOffsetX) <= CENTER_SNAP_THRESHOLD_PX;
+    const snapY = Math.abs(rawY - targetOffsetY) <= CENTER_SNAP_THRESHOLD_PX;
     setCenterGuide({ x: snapX, y: snapY });
     updateDesign(activeIndex, {
       ...currentDesign,
-      pos: { x: snapX ? 0 : rawX, y: snapY ? 0 : rawY },
+      pos: { x: snapX ? targetOffsetX : rawX, y: snapY ? targetOffsetY : rawY },
     });
-  }, [isDragging, currentDesign, activeIndex]);
+  }, [isDragging, currentDesign, activeIndex, areaPos.width, areaPos.height, snapGuidePosition.x, snapGuidePosition.y]);
 
   const handleAreaMouseDown = useCallback((e: React.MouseEvent) => {
     if (areaLocked) return;
@@ -564,6 +584,15 @@ const PlacementStep = ({
   }, [areaLocked, areaPos]);
 
   const printArea = { top: `${areaPos.top}%`, left: `${areaPos.left}%`, width: `${areaPos.width}%`, height: `${areaPos.height}%` };
+  const snapTargetPercent = getGarmentCenterPercent(productId, placementId);
+  const snapGuidePosition = useMemo(() => {
+    const x = ((snapTargetPercent.x - areaPos.left) / Math.max(1, areaPos.width)) * 100;
+    const y = ((snapTargetPercent.y - areaPos.top) / Math.max(1, areaPos.height)) * 100;
+    return {
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+    };
+  }, [areaPos.left, areaPos.top, areaPos.width, areaPos.height, snapTargetPercent.x, snapTargetPercent.y]);
   const productMockups = mockupImagesByProduct[productId] ?? mockupImagesByProduct["basic-tshirt"];
   const exactColorMockup = selectedColor
     ? colorSpecificMockups[productId]?.[selectedColor.value]?.[placementId]
@@ -674,10 +703,16 @@ const PlacementStep = ({
             {isDragging && (centerGuide.x || centerGuide.y) && (
               <div className="absolute pointer-events-none" style={printArea}>
                 {centerGuide.x && (
-                  <div className="absolute top-0 bottom-0 left-1/2 w-px -translate-x-1/2 bg-primary/50" />
+                  <div
+                    className="absolute top-0 bottom-0 w-px -translate-x-1/2 bg-primary/50"
+                    style={{ left: `${snapGuidePosition.x}%` }}
+                  />
                 )}
                 {centerGuide.y && (
-                  <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-primary/50" />
+                  <div
+                    className="absolute left-0 right-0 h-px -translate-y-1/2 bg-primary/50"
+                    style={{ top: `${snapGuidePosition.y}%` }}
+                  />
                 )}
               </div>
             )}
