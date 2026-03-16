@@ -1101,7 +1101,7 @@ const DesignUpload = () => {
                     <div className="mb-2 flex justify-end mr-1">
                       <Link to="/kurv">
                         <Button type="button" variant="outline" size="sm">
-                          {lang === "da" ? "Rediger kurv" : "Edit cart"}
+                          {lang === "da" ? "Tilbage for at ændre i kurven" : "Back to edit cart"}
                         </Button>
                       </Link>
                     </div>
@@ -1110,65 +1110,17 @@ const DesignUpload = () => {
                         {lang === "da" ? "Kurven er tom. Tilføj mindst én vare." : "Cart is empty. Add at least one item."}
                       </p>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         {designCart
                           .slice()
                           .sort((a, b) => b.updatedAt - a.updatedAt)
                           .map((entry) => {
-                            const entryMockups =
-                              entry.placementMockups && entry.placementMockups.length > 0
-                                ? entry.placementMockups
-                                : generatedCartMockups[entry.id] ?? [];
-                            const fallbackProductImage = getMockupSourceAndTransform(
-                              entry.selectedProduct,
-                              entry.selectedColor,
-                              "fullFront"
-                            ).src;
-
                             return (
-                              <div key={entry.id} className="rounded-lg border border-border p-2">
-                                <div className="flex items-start gap-2">
-                                  {fallbackProductImage ? (
-                                    <img src={fallbackProductImage} alt="" className="h-12 w-10 rounded object-contain bg-muted shrink-0" />
-                                  ) : (
-                                    <div className="h-12 w-10 rounded bg-muted shrink-0" />
-                                  )}
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-medium truncate">{entry.selectedProductName} · {entry.selectedColorName}</p>
-                                    <p className="text-[11px] text-muted-foreground">
-                                      {lang === "da" ? "Antal:" : "Qty:"} {entry.totalQuantity}
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground truncate">
-                                      {lang === "da" ? "Størrelser:" : "Sizes:"} {serializeSizeBreakdown(entry.sizeQuantities)}
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground truncate">
-                                      {lang === "da" ? "Placeringer:" : "Placements:"}{" "}
-                                      {entry.placementsUsed.length > 0
-                                        ? entry.placementsUsed.map((id) => placementLabelsResolved[id] ?? id).join(", ")
-                                        : (lang === "da" ? "Uden tryk" : "Without print")}
-                                    </p>
-                                  </div>
-                                  <div className="shrink-0 flex flex-col gap-1">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => handleEditCartItem(entry)}>
-                                      {lang === "da" ? "Rediger design" : "Edit design"}
-                                    </Button>
-                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRemoveCartItem(entry.id)}>
-                                      {lang === "da" ? "Fjern" : "Remove"}
-                                    </Button>
-                                  </div>
-                                </div>
-                                {entryMockups.length > 0 && (
-                                  <div className="mt-2 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                                    {entryMockups.map((mockup) => (
-                                      <div key={`${entry.id}-${mockup.placementId}`} className="rounded-lg border border-border p-2">
-                                        <img src={mockup.dataUrl} alt="" className="w-full aspect-[3/4] object-contain rounded bg-muted" />
-                                        <p className="mt-1 text-[11px] text-muted-foreground truncate">
-                                          {mockup.placementLabel || (placementLabelsResolved[mockup.placementId] ?? mockup.placementId)}
-                                        </p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
+                              <div key={entry.id} className="rounded-lg border border-border px-3 py-2">
+                                <p className="text-xs font-medium truncate">{entry.selectedProductName} · {entry.selectedColorName}</p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  {lang === "da" ? "Antal:" : "Qty:"} {entry.totalQuantity} · {lang === "da" ? "Størrelser:" : "Sizes:"} {serializeSizeBreakdown(entry.sizeQuantities)}
+                                </p>
                               </div>
                             );
                           })}
