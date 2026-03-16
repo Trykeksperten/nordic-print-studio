@@ -361,14 +361,6 @@ const PlacementStep = ({
     currentDesign.file || firstUploadedIndex < 0 ? activeIndex : firstUploadedIndex;
   const controlsDesign = designs[controlsDesignIndex] || currentDesign;
 
-  useEffect(() => {
-    if (currentDesign.file) return;
-    const firstWithFile = designs.findIndex((d) => Boolean(d.file));
-    if (firstWithFile >= 0 && firstWithFile !== activeIndex) {
-      setActiveIndex(firstWithFile);
-    }
-  }, [activeIndex, currentDesign.file, designs]);
-
   // Convert from image-percent to real cm using torso width (without sleeves) as reference.
   const torsoRelativeWidth = areaPos.width / TORSO_WIDTH_PERCENT_OF_IMAGE;
   const baseLogoWidthCm = SHIRT_WIDTH_CM * torsoRelativeWidth;
@@ -402,6 +394,8 @@ const PlacementStep = ({
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const targetIndex = activeIndex;
+    const targetDesign = designs[targetIndex] || emptyDesign();
     const fileName = file.name.toLowerCase();
     const validExtension = fileName.endsWith(".png") || fileName.endsWith(".svg") || fileName.endsWith(".ai");
     if (!validExtension) {
@@ -411,12 +405,12 @@ const PlacementStep = ({
     }
     const reader = new FileReader();
     reader.onload = (ev) => {
-      updateDesign(activeIndex, {
-        ...currentDesign,
+      updateDesign(targetIndex, {
+        ...targetDesign,
         file: ev.target?.result as string,
         fileName: file.name,
         pos: { x: 0, y: 0 },
-        scale: getDefaultScale(currentDesign.sizeCategory, baseLogoWidthCm),
+        scale: getDefaultScale(targetDesign.sizeCategory, baseLogoWidthCm),
       });
       e.target.value = "";
     };
