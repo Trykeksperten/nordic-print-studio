@@ -7,6 +7,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { defaultPrintAreas, getMockupSourceAndTransform, getVisualScale } from "@/components/design/PlacementStep";
 import { calculateOrderSetupFromPlacementCount, calculateTotal } from "@/components/design/PriceSummary";
 import { getProductColors } from "@/lib/productColors";
+import { Search } from "lucide-react";
 
 type PlacementDesign = {
   file: string | null;
@@ -312,18 +313,24 @@ const Kurv = () => {
                       {item.previewMockupDataUrl ? (
                         <button
                           type="button"
-                          className="shrink-0"
+                          className="shrink-0 relative"
                           onClick={() => setZoomedMockup({ src: item.previewMockupDataUrl!, label: item.selectedProductName })}
                         >
                           <img src={item.previewMockupDataUrl} alt="" className="h-16 w-14 rounded object-contain bg-muted" />
+                          <span className="absolute bottom-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-background/90 text-muted-foreground">
+                            <Search size={10} />
+                          </span>
                         </button>
                       ) : fallbackProductImage ? (
                         <button
                           type="button"
-                          className="shrink-0"
+                          className="shrink-0 relative"
                           onClick={() => setZoomedMockup({ src: fallbackProductImage, label: item.selectedProductName })}
                         >
                           <img src={fallbackProductImage} alt="" className="h-16 w-14 rounded object-contain bg-muted" />
+                          <span className="absolute bottom-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-background/90 text-muted-foreground">
+                            <Search size={10} />
+                          </span>
                         </button>
                       ) : (
                         <div className="h-16 w-14 rounded bg-muted shrink-0" />
@@ -385,7 +392,7 @@ const Kurv = () => {
                           <div key={`${item.id}-${mockup.placementId}`} className="rounded-lg border border-border p-2">
                             <button
                               type="button"
-                              className="w-full"
+                              className="w-full relative"
                               onClick={() =>
                                 setZoomedMockup({
                                   src: mockup.dataUrl,
@@ -394,6 +401,9 @@ const Kurv = () => {
                               }
                             >
                               <img src={mockup.dataUrl} alt="" className="w-full aspect-[3/4] object-contain rounded bg-muted" />
+                              <span className="absolute bottom-1 right-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-background/90 text-muted-foreground">
+                                <Search size={12} />
+                              </span>
                             </button>
                             <p className="mt-1 text-[11px] text-muted-foreground truncate">
                               {getPlacementLabel(mockup.placementId, lang)}
