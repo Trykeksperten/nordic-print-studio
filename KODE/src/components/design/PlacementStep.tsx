@@ -36,6 +36,7 @@ interface PlacementStepProps {
   customMockups?: Partial<Record<string, string>>;
   designs: PlacementDesign[];
   onDesignsChange: (designs: PlacementDesign[]) => void;
+  focusRequest?: { designIndex: number; nonce: number };
   stepControls?: ReactNode;
   showHeader?: boolean;
   showColorBadge?: boolean;
@@ -336,6 +337,7 @@ const PlacementStep = ({
   customMockups,
   designs,
   onDesignsChange,
+  focusRequest,
   stepControls,
   showHeader = true,
   showColorBadge = true,
@@ -360,6 +362,12 @@ const PlacementStep = ({
   const controlsDesignIndex =
     currentDesign.file || firstUploadedIndex < 0 ? activeIndex : firstUploadedIndex;
   const controlsDesign = designs[controlsDesignIndex] || currentDesign;
+
+  useEffect(() => {
+    if (!focusRequest) return;
+    const safeIndex = Math.max(0, Math.min(designs.length - 1, focusRequest.designIndex));
+    if (Number.isFinite(safeIndex)) setActiveIndex(safeIndex);
+  }, [designs.length, focusRequest]);
 
   // Convert from image-percent to real cm using torso width (without sleeves) as reference.
   const torsoRelativeWidth = areaPos.width / TORSO_WIDTH_PERCENT_OF_IMAGE;

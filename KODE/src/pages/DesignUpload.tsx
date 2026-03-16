@@ -358,6 +358,11 @@ const DesignUpload = () => {
   const [generatedCartMockups, setGeneratedCartMockups] = useState<
     Record<string, Array<{ placementId: string; placementLabel: string; dataUrl: string }>>
   >({});
+  const [designFocusRequest, setDesignFocusRequest] = useState<{
+    placementId: string;
+    designIndex: number;
+    nonce: number;
+  } | null>(null);
 
   useEffect(() => {
     if (requestedProduct) {
@@ -666,6 +671,13 @@ const DesignUpload = () => {
 
   const handleDesignsChange = (id: string, newDesigns: PlacementDesign[]) => {
     setDesigns((prev) => ({ ...prev, [id]: newDesigns }));
+  };
+
+  const handleActivateUploadedDesign = (placementId: string, designIndex: number) => {
+    const nextStep = steps.findIndex((step) => step.id === placementId);
+    if (nextStep < 0) return;
+    setDesignFocusRequest({ placementId, designIndex, nonce: Date.now() });
+    setCurrentStep(nextStep);
   };
 
   const handleSizeQuantityChange = (size: string, value: number) => {
@@ -1114,6 +1126,11 @@ const DesignUpload = () => {
                   designs={designs[steps[currentStep].id]}
                   showHeader={false}
                   showColorBadge={false}
+                  focusRequest={
+                    designFocusRequest?.placementId === steps[currentStep].id
+                      ? { designIndex: designFocusRequest.designIndex, nonce: designFocusRequest.nonce }
+                      : undefined
+                  }
                   onDesignsChange={(d) => handleDesignsChange(steps[currentStep].id, d)}
                 />
               ) : isSetupStep ? (
@@ -1295,14 +1312,19 @@ const DesignUpload = () => {
                                   ? ` – Logo ${designs[placementId].indexOf(design) + 1}`
                                   : "";
                                 return (
-                                  <div key={`${placementId}-${i}`} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                                  <button
+                                    type="button"
+                                    key={`${placementId}-${i}`}
+                                    onClick={() => handleActivateUploadedDesign(placementId, designs[placementId].indexOf(design))}
+                                    className="w-full flex items-center gap-2 p-2 bg-muted rounded-lg text-left"
+                                  >
                                     <img src={design.file!} alt="" className="w-8 h-8 object-contain rounded" />
                                     <div className="flex-1 min-w-0">
                                       <p className="text-xs font-medium truncate">{placementLabelsResolved[placementId]}{logoNum}</p>
                                       <p className="text-[11px] text-muted-foreground truncate">{design.fileName}</p>
                                     </div>
                                     <CheckCircle2 size={14} className="text-primary shrink-0" />
-                                  </div>
+                                  </button>
                                 );
                               })}
                             </div>
