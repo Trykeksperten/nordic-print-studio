@@ -1467,7 +1467,10 @@ const ColorPicker = ({
   onSelect: (value: string) => void;
 }) => {
   const [hoverPlacementByColor, setHoverPlacementByColor] = useState<Record<string, PlacementImageKey>>({});
-  const hoverPreviewOrder: PlacementImageKey[] = ["rightSleeve", "fullBack", "leftSleeve", "fullFront"];
+  const hoverPreviewOrder: PlacementImageKey[] =
+    productId === "performance-tshirt"
+      ? ["leftSleeve", "fullBack", "rightSleeve", "fullFront"]
+      : ["rightSleeve", "fullBack", "leftSleeve", "fullFront"];
 
   useEffect(() => {
     setHoverPlacementByColor({});
