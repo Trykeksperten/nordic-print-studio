@@ -67,6 +67,7 @@ const visualScaleAnchors = {
 const SHIRT_WIDTH_CM = 45;
 const TORSO_WIDTH_PERCENT_OF_IMAGE = 58;
 const CENTER_SNAP_THRESHOLD_PX = 14;
+const SNAP_TARGETS_STORAGE_KEY = "trykeksperten:snap-targets:v1";
 
 const getGarmentCenterPercent = (productId: string, placementId: string) => {
   const isFrontOrBack = placementId === "fullFront" || placementId === "fullBack";
@@ -82,11 +83,34 @@ const getGarmentCenterPercent = (productId: string, placementId: string) => {
   return { x: 50, y: 50 };
 };
 
+const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
+
+const getSnapStorageMap = (): Record<string, { x: number; y: number }> => {
+  try {
+    const raw = localStorage.getItem(SNAP_TARGETS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, { x: number; y: number }>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const setSnapStorageValue = (key: string, value: { x: number; y: number }) => {
+  const map = getSnapStorageMap();
+  map[key] = value;
+  try {
+    localStorage.setItem(SNAP_TARGETS_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // Ignore storage errors.
+  }
+};
+
 // Default print areas (relative coordinates in %)
 export const defaultPrintAreas: Record<string, { top: number; left: number; width: number; height: number }> = {
   fullFront: { top: 25, left: 25, width: 40, height: 30 },
-  leftSleeve: { top: 19, left: 41, width: 22, height: 18 },
-  rightSleeve: { top: 17, left: 37, width: 22, height: 18 },
+  leftSleeve: { top: 22, left: 41, width: 22, height: 24 },
+  rightSleeve: { top: 22, left: 37, width: 22, height: 24 },
   fullBack: { top: 18, left: 26, width: 40, height: 35 },
 };
 
@@ -362,6 +386,9 @@ const PlacementStep = ({
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [centerGuide, setCenterGuide] = useState<{ x: boolean; y: boolean }>({ x: false, y: false });
+  const [isCalibratingSnap, setIsCalibratingSnap] = useState(false);
+  const [calibratingAxis, setCalibratingAxis] = useState<"x" | "y" | "both">("both");
+  const snapStorageKey = `${productId}:${placementId}`;
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
 
   // Calibration state
@@ -473,14 +500,42 @@ const PlacementStep = ({
   };
 
   const snapTargetPercent = getGarmentCenterPercent(productId, placementId);
+  const [snapTargetOverride, setSnapTargetOverride] = useState<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    const saved = getSnapStorageMap()[snapStorageKey];
+    if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+      setSnapTargetOverride({ x: clampPercent(saved.x), y: clampPercent(saved.y) });
+      return;
+    }
+    setSnapTargetOverride(null);
+  }, [snapStorageKey]);
+  const effectiveSnapTargetPercent = snapTargetOverride ?? snapTargetPercent;
   const snapGuidePosition = useMemo(() => {
-    const x = ((snapTargetPercent.x - areaPos.left) / Math.max(1, areaPos.width)) * 100;
-    const y = ((snapTargetPercent.y - areaPos.top) / Math.max(1, areaPos.height)) * 100;
+    const x = ((effectiveSnapTargetPercent.x - areaPos.left) / Math.max(1, areaPos.width)) * 100;
+    const y = ((effectiveSnapTargetPercent.y - areaPos.top) / Math.max(1, areaPos.height)) * 100;
     return {
       x: Math.max(0, Math.min(100, x)),
       y: Math.max(0, Math.min(100, y)),
     };
-  }, [areaPos.left, areaPos.top, areaPos.width, areaPos.height, snapTargetPercent.x, snapTargetPercent.y]);
+  }, [areaPos.left, areaPos.top, areaPos.width, areaPos.height, effectiveSnapTargetPercent.x, effectiveSnapTargetPercent.y]);
+
+  const updateSnapTargetFromClient = useCallback((clientX: number, clientY: number, axis: "x" | "y" | "both" = "both") => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect || !rect.width || !rect.height) return;
+    const nextX = clampPercent(((clientX - rect.left) / rect.width) * 100);
+    const nextY = clampPercent(((clientY - rect.top) / rect.height) * 100);
+    const current = snapTargetOverride ?? snapTargetPercent;
+    setSnapTargetOverride({
+      x: axis === "y" ? current.x : nextX,
+      y: axis === "x" ? current.y : nextY,
+    });
+  }, [snapTargetOverride, snapTargetPercent]);
+
+  const startSnapCalibration = useCallback((clientX: number, clientY: number, axis: "x" | "y" | "both") => {
+    setCalibratingAxis(axis);
+    setIsCalibratingSnap(true);
+    updateSnapTargetFromClient(clientX, clientY, axis);
+  }, [updateSnapTargetFromClient]);
 
   // Design drag handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -490,6 +545,10 @@ const PlacementStep = ({
   }, [currentDesign.pos]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isCalibratingSnap) {
+      updateSnapTargetFromClient(e.clientX, e.clientY, calibratingAxis);
+      return;
+    }
     if (isResizingArea && areaResizeRef.current && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const dx = ((e.clientX - areaResizeRef.current.startX) / rect.width) * 100;
@@ -531,9 +590,14 @@ const PlacementStep = ({
       ...currentDesign,
       pos: { x: snapX ? targetOffsetX : rawX, y: snapY ? targetOffsetY : rawY },
     });
-  }, [isDragging, isDraggingArea, isResizingArea, currentDesign, activeIndex, areaPos.width, areaPos.height, snapGuidePosition.x, snapGuidePosition.y]);
+  }, [isCalibratingSnap, calibratingAxis, updateSnapTargetFromClient, isDragging, isDraggingArea, isResizingArea, currentDesign, activeIndex, areaPos.width, areaPos.height, snapGuidePosition.x, snapGuidePosition.y]);
 
   const handleMouseUp = useCallback(() => {
+    if (isCalibratingSnap) {
+      if (snapTargetOverride) setSnapStorageValue(snapStorageKey, snapTargetOverride);
+      setIsCalibratingSnap(false);
+      setCalibratingAxis("both");
+    }
     if (isDraggingArea || isResizingArea) {
       setIsDraggingArea(false);
       setIsResizingArea(false);
@@ -547,7 +611,7 @@ const PlacementStep = ({
     dragRef.current = null;
     areaDragRef.current = null;
     areaResizeRef.current = null;
-  }, [isDraggingArea, isResizingArea, placementId, areaPos]);
+  }, [isCalibratingSnap, snapStorageKey, snapTargetOverride, isDraggingArea, isResizingArea, placementId, areaPos]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -721,6 +785,71 @@ const PlacementStep = ({
                 )}
               </div>
             )}
+
+            <div className="absolute pointer-events-none" style={printArea}>
+              <div
+                className="absolute top-0 bottom-0 w-px -translate-x-1/2 bg-primary/30"
+                style={{ left: `${snapGuidePosition.x}%` }}
+              />
+              <div
+                className="absolute left-0 right-0 h-px -translate-y-1/2 bg-primary/30"
+                style={{ top: `${snapGuidePosition.y}%` }}
+              />
+              <button
+                type="button"
+                className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/60 bg-background/80 pointer-events-auto cursor-move"
+                style={{ left: `${snapGuidePosition.x}%`, top: `${snapGuidePosition.y}%` }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  startSnapCalibration(e.clientX, e.clientY, "both");
+                }}
+                onTouchStart={(e) => {
+                  const touch = e.touches[0];
+                  if (!touch) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  startSnapCalibration(touch.clientX, touch.clientY, "both");
+                }}
+                aria-label={lang === "da" ? "Juster snap-center" : "Adjust snap center"}
+              />
+              <button
+                type="button"
+                className="absolute top-0 bottom-0 w-4 -translate-x-1/2 bg-transparent pointer-events-auto cursor-ew-resize"
+                style={{ left: `${snapGuidePosition.x}%` }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  startSnapCalibration(e.clientX, e.clientY, "x");
+                }}
+                onTouchStart={(e) => {
+                  const touch = e.touches[0];
+                  if (!touch) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  startSnapCalibration(touch.clientX, touch.clientY, "x");
+                }}
+                aria-label={lang === "da" ? "Flyt lodret snap-linje" : "Move vertical snap guide"}
+              />
+              <button
+                type="button"
+                className="absolute left-0 right-0 h-4 -translate-y-1/2 bg-transparent pointer-events-auto cursor-ns-resize"
+                style={{ top: `${snapGuidePosition.y}%` }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  startSnapCalibration(e.clientX, e.clientY, "y");
+                }}
+                onTouchStart={(e) => {
+                  const touch = e.touches[0];
+                  if (!touch) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  startSnapCalibration(touch.clientX, touch.clientY, "y");
+                }}
+                aria-label={lang === "da" ? "Flyt vandret snap-linje" : "Move horizontal snap guide"}
+              />
+            </div>
           </div>
         </div>
 
