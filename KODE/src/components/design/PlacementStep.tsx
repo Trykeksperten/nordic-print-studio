@@ -345,7 +345,7 @@ const sleeveMirrorOverridesByProduct: Partial<
   Record<string, Partial<Record<"leftSleeve" | "rightSleeve", boolean>>>
 > = {
   "byb-oversized-acid-wash-tee": {
-    leftSleeve: false,
+    leftSleeve: true,
     rightSleeve: true,
   },
   "performance-tshirt": {
