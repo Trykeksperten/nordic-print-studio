@@ -782,32 +782,7 @@ const PlacementStep = ({
               </div>
             ))}
 
-            {isDragging && (centerGuide.x || centerGuide.y) && (
-              <div className="absolute pointer-events-none" style={printArea}>
-                {centerGuide.x && (
-                  <div
-                    className="absolute top-0 bottom-0 w-px -translate-x-1/2 bg-primary/50"
-                    style={{ left: `${snapGuidePosition.x}%` }}
-                  />
-                )}
-                {centerGuide.y && (
-                  <div
-                    className="absolute left-0 right-0 h-px -translate-y-1/2 bg-primary/50"
-                    style={{ top: `${snapGuidePosition.y}%` }}
-                  />
-                )}
-              </div>
-            )}
-
             <div className="absolute pointer-events-none" style={printArea}>
-              <div
-                className="absolute top-0 bottom-0 w-px -translate-x-1/2 bg-primary/30"
-                style={{ left: `${snapGuidePosition.x}%` }}
-              />
-              <div
-                className="absolute left-0 right-0 h-px -translate-y-1/2 bg-primary/30"
-                style={{ top: `${snapGuidePosition.y}%` }}
-              />
               {canAdjustSnapCenter && (
                 <>
                   <button
