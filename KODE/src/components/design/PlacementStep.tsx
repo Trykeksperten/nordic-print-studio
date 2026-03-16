@@ -323,6 +323,17 @@ const sharedSleeveSourceSideByProduct: Record<string, "left" | "right"> = {
   "byb-ladies-fluffy-sweatpants": "left",
 };
 
+const snapCenterLockedProducts = new Set([
+  "basic-tshirt",
+  "heavyweight-tshirt",
+  "standard-hoodie",
+  "premium-hoodie",
+  "authentic-sweat",
+  "byb-oversized-acid-wash-tee",
+  "performance-tshirt",
+  "byb-ladies-fluffy-sweatpants",
+]);
+
 export const getMockupSourceAndTransform = (
   productId: string,
   colorValue: string | undefined,
@@ -382,6 +393,7 @@ const PlacementStep = ({
   showColorBadge = true,
 }: PlacementStepProps) => {
   const { lang } = useLanguage();
+  const canAdjustSnapCenter = !snapCenterLockedProducts.has(productId);
   const areaLocked = placementId === "fullFront" || placementId === "leftSleeve" || placementId === "rightSleeve" || placementId === "fullBack";
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -532,10 +544,11 @@ const PlacementStep = ({
   }, [snapTargetOverride, snapTargetPercent]);
 
   const startSnapCalibration = useCallback((clientX: number, clientY: number, axis: "x" | "y" | "both") => {
+    if (!canAdjustSnapCenter) return;
     setCalibratingAxis(axis);
     setIsCalibratingSnap(true);
     updateSnapTargetFromClient(clientX, clientY, axis);
-  }, [updateSnapTargetFromClient]);
+  }, [canAdjustSnapCenter, updateSnapTargetFromClient]);
 
   // Design drag handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -795,60 +808,64 @@ const PlacementStep = ({
                 className="absolute left-0 right-0 h-px -translate-y-1/2 bg-primary/30"
                 style={{ top: `${snapGuidePosition.y}%` }}
               />
-              <button
-                type="button"
-                className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/60 bg-background/80 pointer-events-auto cursor-move"
-                style={{ left: `${snapGuidePosition.x}%`, top: `${snapGuidePosition.y}%` }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  startSnapCalibration(e.clientX, e.clientY, "both");
-                }}
-                onTouchStart={(e) => {
-                  const touch = e.touches[0];
-                  if (!touch) return;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  startSnapCalibration(touch.clientX, touch.clientY, "both");
-                }}
-                aria-label={lang === "da" ? "Juster snap-center" : "Adjust snap center"}
-              />
-              <button
-                type="button"
-                className="absolute top-0 bottom-0 w-4 -translate-x-1/2 bg-transparent pointer-events-auto cursor-ew-resize"
-                style={{ left: `${snapGuidePosition.x}%` }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  startSnapCalibration(e.clientX, e.clientY, "x");
-                }}
-                onTouchStart={(e) => {
-                  const touch = e.touches[0];
-                  if (!touch) return;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  startSnapCalibration(touch.clientX, touch.clientY, "x");
-                }}
-                aria-label={lang === "da" ? "Flyt lodret snap-linje" : "Move vertical snap guide"}
-              />
-              <button
-                type="button"
-                className="absolute left-0 right-0 h-4 -translate-y-1/2 bg-transparent pointer-events-auto cursor-ns-resize"
-                style={{ top: `${snapGuidePosition.y}%` }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  startSnapCalibration(e.clientX, e.clientY, "y");
-                }}
-                onTouchStart={(e) => {
-                  const touch = e.touches[0];
-                  if (!touch) return;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  startSnapCalibration(touch.clientX, touch.clientY, "y");
-                }}
-                aria-label={lang === "da" ? "Flyt vandret snap-linje" : "Move horizontal snap guide"}
-              />
+              {canAdjustSnapCenter && (
+                <>
+                  <button
+                    type="button"
+                    className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/60 bg-background/80 pointer-events-auto cursor-move"
+                    style={{ left: `${snapGuidePosition.x}%`, top: `${snapGuidePosition.y}%` }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      startSnapCalibration(e.clientX, e.clientY, "both");
+                    }}
+                    onTouchStart={(e) => {
+                      const touch = e.touches[0];
+                      if (!touch) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      startSnapCalibration(touch.clientX, touch.clientY, "both");
+                    }}
+                    aria-label={lang === "da" ? "Juster snap-center" : "Adjust snap center"}
+                  />
+                  <button
+                    type="button"
+                    className="absolute top-0 bottom-0 w-4 -translate-x-1/2 bg-transparent pointer-events-auto cursor-ew-resize"
+                    style={{ left: `${snapGuidePosition.x}%` }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      startSnapCalibration(e.clientX, e.clientY, "x");
+                    }}
+                    onTouchStart={(e) => {
+                      const touch = e.touches[0];
+                      if (!touch) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      startSnapCalibration(touch.clientX, touch.clientY, "x");
+                    }}
+                    aria-label={lang === "da" ? "Flyt lodret snap-linje" : "Move vertical snap guide"}
+                  />
+                  <button
+                    type="button"
+                    className="absolute left-0 right-0 h-4 -translate-y-1/2 bg-transparent pointer-events-auto cursor-ns-resize"
+                    style={{ top: `${snapGuidePosition.y}%` }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      startSnapCalibration(e.clientX, e.clientY, "y");
+                    }}
+                    onTouchStart={(e) => {
+                      const touch = e.touches[0];
+                      if (!touch) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      startSnapCalibration(touch.clientX, touch.clientY, "y");
+                    }}
+                    aria-label={lang === "da" ? "Flyt vandret snap-linje" : "Move horizontal snap guide"}
+                  />
+                </>
+              )}
             </div>
           </div>
         </div>
