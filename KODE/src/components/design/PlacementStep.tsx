@@ -468,6 +468,16 @@ const PlacementStep = ({
     });
   };
 
+  const snapTargetPercent = getGarmentCenterPercent(productId, placementId);
+  const snapGuidePosition = useMemo(() => {
+    const x = ((snapTargetPercent.x - areaPos.left) / Math.max(1, areaPos.width)) * 100;
+    const y = ((snapTargetPercent.y - areaPos.top) / Math.max(1, areaPos.height)) * 100;
+    return {
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+    };
+  }, [areaPos.left, areaPos.top, areaPos.width, areaPos.height, snapTargetPercent.x, snapTargetPercent.y]);
+
   // Design drag handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -584,15 +594,6 @@ const PlacementStep = ({
   }, [areaLocked, areaPos]);
 
   const printArea = { top: `${areaPos.top}%`, left: `${areaPos.left}%`, width: `${areaPos.width}%`, height: `${areaPos.height}%` };
-  const snapTargetPercent = getGarmentCenterPercent(productId, placementId);
-  const snapGuidePosition = useMemo(() => {
-    const x = ((snapTargetPercent.x - areaPos.left) / Math.max(1, areaPos.width)) * 100;
-    const y = ((snapTargetPercent.y - areaPos.top) / Math.max(1, areaPos.height)) * 100;
-    return {
-      x: Math.max(0, Math.min(100, x)),
-      y: Math.max(0, Math.min(100, y)),
-    };
-  }, [areaPos.left, areaPos.top, areaPos.width, areaPos.height, snapTargetPercent.x, snapTargetPercent.y]);
   const productMockups = mockupImagesByProduct[productId] ?? mockupImagesByProduct["basic-tshirt"];
   const exactColorMockup = selectedColor
     ? colorSpecificMockups[productId]?.[selectedColor.value]?.[placementId]
