@@ -11,6 +11,7 @@ import PlacementStep, {
   emptyDesign,
   getMockupSourceAndTransform,
   getVisualScale,
+  resolveAssetPath,
 } from "@/components/design/PlacementStep";
 import { calculateOrderSetupFromPlacementCount, calculateTotal } from "@/components/design/PriceSummary";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -305,7 +306,8 @@ const getColorPreviewImage = (
   placementId: PlacementImageKey
 ): string | undefined => {
   const colorImages = colorImagesByProduct[productId]?.[colorValue];
-  return colorImages?.[placementId] ?? colorImages?.fullFront;
+  const raw = colorImages?.[placementId] ?? colorImages?.fullFront;
+  return raw ? resolveAssetPath(raw) : undefined;
 };
 
 const DesignUpload = () => {

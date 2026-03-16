@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import Layout from "@/components/Layout";
 import { productPricingById } from "@/lib/productPricing";
 import { autoBybLadiesFluffySweatpantsCardImages } from "@/lib/autoFolderProductVariants";
+import { resolveAssetPath } from "@/components/design/PlacementStep";
 
 const products = [
   {
@@ -148,7 +149,7 @@ const Produkter = () => {
                 <Link to={`/tekstiltryk/setup/${product.id}`} className="block">
                   <div className="relative w-full aspect-[3/4] overflow-hidden rounded-t-2xl bg-white cursor-pointer">
                     <img
-                      src={productCardImages[product.id]?.front}
+                      src={resolveAssetPath(productCardImages[product.id]?.front ?? "")}
                       alt={`${product[lang].name} front`}
                       className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 group-hover:opacity-0 ${
                         edgeFillScaleByProduct[product.id] ?? ""
@@ -157,7 +158,7 @@ const Produkter = () => {
                       draggable={false}
                     />
                     <img
-                      src={productCardImages[product.id]?.back}
+                      src={resolveAssetPath(productCardImages[product.id]?.back ?? "")}
                       alt={`${product[lang].name} back`}
                       className={`absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100 ${
                         edgeFillScaleByProduct[product.id] ?? ""

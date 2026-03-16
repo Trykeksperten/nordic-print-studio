@@ -11,6 +11,13 @@ import {
 } from "@/lib/autoTshirtVariants";
 import { autoBybLadiesFluffySweatpantsColorMockups } from "@/lib/autoFolderProductVariants";
 
+export const resolveAssetPath = (src: string) => {
+  if (!src) return src;
+  if (/^(https?:|data:|blob:)/i.test(src)) return src;
+  if (!src.startsWith("/")) return src;
+  return `${import.meta.env.BASE_URL}${src.slice(1)}`;
+};
+
 export interface PlacementDesign {
   file: string | null;
   fileName: string;
@@ -308,7 +315,7 @@ export const getMockupSourceAndTransform = (
     : false;
   const mockupTransform = `${mirrorMockup ? "scaleX(-1) " : ""}scale(1)`;
 
-  return { src: baseMockupImage, transform: mockupTransform };
+  return { src: resolveAssetPath(baseMockupImage), transform: mockupTransform };
 };
 
 export const emptyDesign = (): PlacementDesign => ({
