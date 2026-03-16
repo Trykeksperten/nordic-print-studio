@@ -346,6 +346,7 @@ const sleeveMirrorOverridesByProduct: Partial<
 > = {
   "byb-oversized-acid-wash-tee": {
     leftSleeve: true,
+    rightSleeve: false,
   },
   "performance-tshirt": {
     rightSleeve: false,
