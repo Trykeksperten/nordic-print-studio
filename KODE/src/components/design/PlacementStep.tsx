@@ -1007,5 +1007,9 @@ export const getVisualScale = (
       : 1;
   const backPlacementMultiplier =
     productId === "performance-tshirt" && placementId === "fullBack" ? 0.75 : 1;
-  return scale * multiplier * productMultiplier * backPlacementMultiplier;
+  const realisticPreviewCompensation =
+    productId === "standard-hoodie" || productId === "premium-hoodie" || productId === "authentic-sweat"
+      ? 0.78
+      : 1;
+  return scale * multiplier * productMultiplier * backPlacementMultiplier * realisticPreviewCompensation;
 };
