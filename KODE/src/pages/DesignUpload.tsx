@@ -1391,17 +1391,6 @@ const DesignUpload = () => {
                 </Button>
               )}
               {!isFormStep && hasEnteredDesign && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleDoneWithDesign}
-                  className="w-full"
-                >
-                  {lang === "da" ? "Færdig med mit design" : "Done with my design"}
-                </Button>
-              )}
-
-              {!isFormStep && hasEnteredDesign && (
                 <p className="text-xs text-muted-foreground text-center">
                   {lang === "da"
                     ? "Du kan springe placeringer over, hvis du ikke ønsker tryk der."
