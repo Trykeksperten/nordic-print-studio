@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 35 33% 96%;
+    --foreground: 220 10% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 10% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 10% 20%;
+
+    --primary: 140 25% 30%;
+    --primary-foreground: 35 33% 96%;
+
+    --secondary: 35 20% 90%;
+    --secondary-foreground: 220 10% 20%;
+
+    --muted: 35 20% 90%;
+    --muted-foreground: 220 8% 45%;
+
+    --accent: 140 20% 92%;
+    --accent-foreground: 140 25% 30%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 92%;
+    --input: 220 15% 92%;
+    --ring: 140 35% 45%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 35 25% 94%;
+    --sidebar-foreground: 220 10% 20%;
+    --sidebar-primary: 140 25% 30%;
+    --sidebar-primary-foreground: 35 33% 96%;
+    --sidebar-accent: 35 20% 90%;
+    --sidebar-accent-foreground: 220 10% 20%;
+    --sidebar-border: 220 15% 92%;
+    --sidebar-ring: 140 35% 45%;
+  }
+
+  .dark {
+    --background: 220 15% 8%;
+    --foreground: 35 20% 92%;
+    --card: 220 15% 12%;
+    --card-foreground: 35 20% 92%;
+    --popover: 220 15% 12%;
+    --popover-foreground: 35 20% 92%;
+    --primary: 140 30% 45%;
+    --primary-foreground: 220 15% 8%;
+    --secondary: 220 10% 18%;
+    --secondary-foreground: 35 20% 92%;
+    --muted: 220 10% 18%;
+    --muted-foreground: 220 8% 55%;
+    --accent: 140 15% 18%;
+    --accent-foreground: 140 30% 65%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 10% 18%;
+    --input: 220 10% 18%;
+    --ring: 140 35% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Satoshi', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Satoshi', system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@layer utilities {
+  .card-shadow {
+    box-shadow: 0 0 0 1px rgba(0,0,0,.05), 0 1px 2px 0 rgba(0,0,0,.05);
+  }
+  .card-shadow-hover {
+    box-shadow: 0 0 0 1px rgba(0,0,0,.05), 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1);
+  }
+  .hero-abstract-base {
+    background:
+      radial-gradient(130% 84% at 4% 16%, rgba(188, 212, 238, .44) 0%, rgba(188, 212, 238, .14) 32%, rgba(246, 246, 244, 0) 57%),
+      radial-gradient(96% 76% at 88% 18%, rgba(107, 138, 188, .24) 0%, rgba(107, 138, 188, .08) 36%, rgba(246, 246, 244, 0) 66%),
+      radial-gradient(120% 90% at 62% 84%, rgba(217, 228, 241, .34) 0%, rgba(217, 228, 241, .10) 38%, rgba(246, 246, 244, 0) 72%),
+      linear-gradient(132deg, #f4f5f3 0%, #f1f1ee 52%, #eceeec 100%);
+  }
+
+  .hero-right-art {
+    background:
+      radial-gradient(68% 56% at 18% 24%, rgba(87, 141, 214, .32) 0%, rgba(87, 141, 214, .10) 42%, rgba(87, 141, 214, 0) 76%),
+      radial-gradient(62% 52% at 72% 26%, rgba(68, 173, 116, .28) 0%, rgba(68, 173, 116, .08) 40%, rgba(68, 173, 116, 0) 76%),
+      radial-gradient(72% 62% at 56% 78%, rgba(220, 53, 96, .20) 0%, rgba(220, 53, 96, .06) 38%, rgba(220, 53, 96, 0) 72%),
+      radial-gradient(48% 34% at 60% 48%, rgba(255, 255, 255, .72) 0%, rgba(255, 255, 255, .22) 36%, rgba(255, 255, 255, 0) 78%),
+      linear-gradient(135deg, rgba(242,244,242,.0) 0%, rgba(221,226,232,.34) 44%, rgba(210,218,227,.46) 100%);
+    filter: saturate(1.03) contrast(1.03);
+  }
+
+  .hero-fabric-texture {
+    background:
+      repeating-linear-gradient(14deg, rgba(255,255,255,.08) 0 1px, rgba(0,0,0,0) 1px 7px),
+      repeating-linear-gradient(104deg, rgba(65,85,115,.05) 0 1px, rgba(0,0,0,0) 1px 8px);
+    mix-blend-mode: multiply;
+  }
+
+  .hero-foil-gloss {
+    background:
+      radial-gradient(42% 28% at 73% 34%, rgba(255,255,255,.72) 0%, rgba(255,255,255,.32) 26%, rgba(255,255,255,0) 72%),
+      radial-gradient(33% 21% at 36% 62%, rgba(255,255,255,.58) 0%, rgba(255,255,255,.18) 30%, rgba(255,255,255,0) 78%);
+    mix-blend-mode: screen;
+  }
+}
