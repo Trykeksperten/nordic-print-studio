@@ -66,6 +66,7 @@ const visualScaleAnchors = {
 
 const SHIRT_WIDTH_CM = 45;
 const TORSO_WIDTH_PERCENT_OF_IMAGE = 58;
+const CENTER_SNAP_THRESHOLD_PX = 14;
 
 // Default print areas (relative coordinates in %)
 export const defaultPrintAreas: Record<string, { top: number; left: number; width: number; height: number }> = {
@@ -346,6 +347,7 @@ const PlacementStep = ({
   const areaLocked = placementId === "fullFront" || placementId === "leftSleeve" || placementId === "rightSleeve" || placementId === "fullBack";
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [centerGuide, setCenterGuide] = useState<{ x: boolean; y: boolean }>({ x: false, y: false });
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
 
   // Calibration state
@@ -491,7 +493,15 @@ const PlacementStep = ({
     if (!isDragging || !dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
-    updateDesign(activeIndex, { ...currentDesign, pos: { x: dragRef.current.startPosX + dx, y: dragRef.current.startPosY + dy } });
+    const rawX = dragRef.current.startPosX + dx;
+    const rawY = dragRef.current.startPosY + dy;
+    const snapX = Math.abs(rawX) <= CENTER_SNAP_THRESHOLD_PX;
+    const snapY = Math.abs(rawY) <= CENTER_SNAP_THRESHOLD_PX;
+    setCenterGuide({ x: snapX, y: snapY });
+    updateDesign(activeIndex, {
+      ...currentDesign,
+      pos: { x: snapX ? 0 : rawX, y: snapY ? 0 : rawY },
+    });
   }, [isDragging, isDraggingArea, isResizingArea, currentDesign, activeIndex, areaPos.left, areaPos.top]);
 
   const handleMouseUp = useCallback(() => {
@@ -504,6 +514,7 @@ const PlacementStep = ({
       }));
     }
     setIsDragging(false);
+    setCenterGuide({ x: false, y: false });
     dragRef.current = null;
     areaDragRef.current = null;
     areaResizeRef.current = null;
@@ -520,7 +531,15 @@ const PlacementStep = ({
     const touch = e.touches[0];
     const dx = touch.clientX - dragRef.current.startX;
     const dy = touch.clientY - dragRef.current.startY;
-    updateDesign(activeIndex, { ...currentDesign, pos: { x: dragRef.current.startPosX + dx, y: dragRef.current.startPosY + dy } });
+    const rawX = dragRef.current.startPosX + dx;
+    const rawY = dragRef.current.startPosY + dy;
+    const snapX = Math.abs(rawX) <= CENTER_SNAP_THRESHOLD_PX;
+    const snapY = Math.abs(rawY) <= CENTER_SNAP_THRESHOLD_PX;
+    setCenterGuide({ x: snapX, y: snapY });
+    updateDesign(activeIndex, {
+      ...currentDesign,
+      pos: { x: snapX ? 0 : rawX, y: snapY ? 0 : rawY },
+    });
   }, [isDragging, currentDesign, activeIndex]);
 
   const handleAreaMouseDown = useCallback((e: React.MouseEvent) => {
@@ -651,6 +670,17 @@ const PlacementStep = ({
                 />
               </div>
             ))}
+
+            {isDragging && (centerGuide.x || centerGuide.y) && (
+              <div className="absolute pointer-events-none" style={printArea}>
+                {centerGuide.x && (
+                  <div className="absolute top-0 bottom-0 left-1/2 w-px -translate-x-1/2 bg-primary/50" />
+                )}
+                {centerGuide.y && (
+                  <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-primary/50" />
+                )}
+              </div>
+            )}
           </div>
         </div>
 
