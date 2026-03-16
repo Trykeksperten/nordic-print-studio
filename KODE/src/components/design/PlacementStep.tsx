@@ -134,10 +134,10 @@ const mockupImagesByProduct: Record<string, Record<string, string>> = {
     fullBack: "/byb-acid-wash-black-back.avif",
   },
   "byb-ladies-fluffy-sweatpants": {
-    fullFront: "/BY291_Mw1-14274 for.webp",
-    leftSleeve: "/BY291_Mw1-14274 for.webp",
-    rightSleeve: "/BY291_Mw1-14274 for.webp",
-    fullBack: "/BY291_Mw2-14274 bag.webp",
+    fullFront: "/BY fluffy pants for.pdf",
+    leftSleeve: "/BY fluffy pants for.pdf",
+    rightSleeve: "/BY fluffy pants for.pdf",
+    fullBack: "/by fluffy pants bag.pdf",
   },
   "authentic-sweat": {
     fullFront: "/russell-authentic-sweat-black-front.jpg",
@@ -362,7 +362,9 @@ export const getMockupSourceAndTransform = (
   placementId: string
 ) => {
   const shouldSwapSleeveSources =
-    productId !== "byb-ladies-fluffy-sweatpants" && productId !== "performance-tshirt";
+    productId !== "byb-ladies-fluffy-sweatpants" &&
+    productId !== "performance-tshirt" &&
+    productId !== "byb-oversized-acid-wash-tee";
   const imagePlacementId =
     shouldSwapSleeveSources && placementId === "leftSleeve"
       ? "rightSleeve"
@@ -717,7 +719,9 @@ const PlacementStep = ({
   const printArea = { top: `${areaPos.top}%`, left: `${areaPos.left}%`, width: `${areaPos.width}%`, height: `${areaPos.height}%` };
   const productMockups = mockupImagesByProduct[productId] ?? mockupImagesByProduct["basic-tshirt"];
   const shouldSwapSleeveSources =
-    productId !== "byb-ladies-fluffy-sweatpants" && productId !== "performance-tshirt";
+    productId !== "byb-ladies-fluffy-sweatpants" &&
+    productId !== "performance-tshirt" &&
+    productId !== "byb-oversized-acid-wash-tee";
   const imagePlacementId =
     shouldSwapSleeveSources && placementId === "leftSleeve"
       ? "rightSleeve"
