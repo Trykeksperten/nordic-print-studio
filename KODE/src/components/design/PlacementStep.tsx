@@ -59,9 +59,9 @@ const sizeCategoryCmBounds: Record<string, { min: number; max: number }> = {
 // Visual-only scaling anchors for preview rendering.
 // Does not affect pricing, saved order data, or cm calculations.
 const visualScaleAnchors = {
-  upTo12: 1.3,
-  at20: 1.05,
-  at40: 1.04,
+  upTo12: 1,
+  at20: 1,
+  at40: 1,
 };
 
 const SHIRT_WIDTH_CM = 45;
@@ -1202,7 +1202,7 @@ export const getVisualScale = (
     productId === "performance-tshirt"
       ? 1.15 * 1.25
       : productId === "basic-tshirt" || productId === "heavyweight-tshirt"
-      ? 1.15
+      ? 1
       : 1;
   const backPlacementMultiplier =
     productId === "performance-tshirt" && placementId === "fullBack" ? 0.75 : 1;

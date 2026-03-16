@@ -91,7 +91,7 @@ const PRODUCT_SOURCES = [
       "../PRODUKTER/TriDri Performance Herre",
     ],
     filePrefix: "tridri-performance",
-    sleeveSourceSide: "right",
+    sleeveSourceSide: "left",
   },
   {
     productId: "premium-hoodie",
@@ -185,6 +185,14 @@ for (const color of KNOWN_COLORS) {
 
 const warnings = [];
 
+const removeIfExists = (filePath) => {
+  try {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch {
+    // Ignore cleanup errors; sync should still attempt to write output.
+  }
+};
+
 const syncProduct = ({ productId, label, sourcePathCandidates, filePrefix, allowedValues, sleeveSourceSide = "left" }) => {
   const sourceDir = resolveExistingPath(sourcePathCandidates);
   if (!sourceDir) {
@@ -262,6 +270,11 @@ const syncProduct = ({ productId, label, sourcePathCandidates, filePrefix, allow
     const leftOut = path.join(publicDir, leftName);
     const rightOut = path.join(publicDir, rightName);
     const backOut = path.join(publicDir, backName);
+
+    removeIfExists(frontOut);
+    removeIfExists(leftOut);
+    removeIfExists(rightOut);
+    removeIfExists(backOut);
 
     fs.copyFileSync(item.frontSrc, frontOut);
     fs.copyFileSync(item.backSrc, backOut);

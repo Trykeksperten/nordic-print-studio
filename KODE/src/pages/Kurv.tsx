@@ -430,9 +430,9 @@ const Kurv = () => {
           )}
 
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Link to="/tekstiltryk/design">
+            <Link to="/tekstiltryk/produkter">
               <Button variant="outline" className="w-full">
-                {lang === "da" ? "Fortsæt design" : "Continue design"}
+                {lang === "da" ? "Nyt produkt" : "New product"}
               </Button>
             </Link>
             <Link to="/tekstiltryk/design?checkout=1">

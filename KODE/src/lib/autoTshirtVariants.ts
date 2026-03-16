@@ -230,10 +230,22 @@ export const autoPerformanceTshirtVariants: AutoProductVariant[] = [
     "hex": "#5B6E80"
   },
   {
+    "value": "bright-green",
+    "da": "Bright Green",
+    "en": "Bright Green",
+    "hex": "#42B883"
+  },
+  {
     "value": "bright-purple",
     "da": "Bright Purple",
     "en": "Bright Purple",
     "hex": "#7A4FB7"
+  },
+  {
+    "value": "french-navy",
+    "da": "French Navy",
+    "en": "French Navy",
+    "hex": "#3B4557"
   },
   {
     "value": "bottle-green",
@@ -254,20 +266,44 @@ export const autoPerformanceTshirtVariants: AutoProductVariant[] = [
     "hex": "#FFE100"
   },
   {
-    "value": "ny-mappe-med-emner-2",
-    "da": "Ny Mappe Med Emner 2",
-    "en": "Ny Mappe Med Emner 2",
+    "value": "blue-malange",
+    "da": "Blue Malange",
+    "en": "Blue Malange",
     "hex": "#9CA3AF"
   },
   {
-    "value": "ny-mappe-med-emner-3",
-    "da": "Ny Mappe Med Emner 3",
-    "en": "Ny Mappe Med Emner 3",
+    "value": "neon-green",
+    "da": "Neon Green",
+    "en": "Neon Green",
+    "hex": "#9CA3AF"
+  },
+  {
+    "value": "neon-orange",
+    "da": "Neon Orange",
+    "en": "Neon Orange",
+    "hex": "#9CA3AF"
+  },
+  {
+    "value": "neon-yellow",
+    "da": "Neon Yellow",
+    "en": "Neon Yellow",
+    "hex": "#9CA3AF"
+  },
+  {
+    "value": "orange",
+    "da": "Orange",
+    "en": "Orange",
     "hex": "#9CA3AF"
   }
 ];
 
 export const autoPerformanceTshirtColorMockups: Record<string, Partial<Record<"fullFront" | "leftSleeve" | "rightSleeve" | "fullBack", string>>> = {
+  "blue-malange": {
+    "fullFront": "/tridri-performance-blue-malange-front.png",
+    "leftSleeve": "/tridri-performance-blue-malange-left-sleeve.png",
+    "rightSleeve": "/tridri-performance-blue-malange-right-sleeve.png",
+    "fullBack": "/tridri-performance-blue-malange-back.png"
+  },
   "blue-steel": {
     "fullFront": "/tridri-performance-blue-steel-front.png",
     "leftSleeve": "/tridri-performance-blue-steel-left-sleeve.png",
@@ -280,11 +316,23 @@ export const autoPerformanceTshirtColorMockups: Record<string, Partial<Record<"f
     "rightSleeve": "/tridri-performance-burgundy-right-sleeve.png",
     "fullBack": "/tridri-performance-burgundy-back.png"
   },
+  "bright-green": {
+    "fullFront": "/tridri-performance-bright-green-front.png",
+    "leftSleeve": "/tridri-performance-bright-green-left-sleeve.png",
+    "rightSleeve": "/tridri-performance-bright-green-right-sleeve.png",
+    "fullBack": "/tridri-performance-bright-green-back.png"
+  },
   "bright-purple": {
     "fullFront": "/tridri-performance-bright-purple-front.png",
     "leftSleeve": "/tridri-performance-bright-purple-left-sleeve.png",
     "rightSleeve": "/tridri-performance-bright-purple-right-sleeve.png",
     "fullBack": "/tridri-performance-bright-purple-back.png"
+  },
+  "french-navy": {
+    "fullFront": "/tridri-performance-french-navy-front.png",
+    "leftSleeve": "/tridri-performance-french-navy-left-sleeve.png",
+    "rightSleeve": "/tridri-performance-french-navy-right-sleeve.png",
+    "fullBack": "/tridri-performance-french-navy-back.png"
   },
   "yellow": {
     "fullFront": "/tridri-performance-yellow-front.png",
@@ -292,23 +340,35 @@ export const autoPerformanceTshirtColorMockups: Record<string, Partial<Record<"f
     "rightSleeve": "/tridri-performance-yellow-right-sleeve.png",
     "fullBack": "/tridri-performance-yellow-back.png"
   },
-  "ny-mappe-med-emner-2": {
-    "fullFront": "/tridri-performance-ny-mappe-med-emner-2-front.png",
-    "leftSleeve": "/tridri-performance-ny-mappe-med-emner-2-left-sleeve.png",
-    "rightSleeve": "/tridri-performance-ny-mappe-med-emner-2-right-sleeve.png",
-    "fullBack": "/tridri-performance-ny-mappe-med-emner-2-back.png"
+  "neon-green": {
+    "fullFront": "/tridri-performance-neon-green-front.png",
+    "leftSleeve": "/tridri-performance-neon-green-left-sleeve.png",
+    "rightSleeve": "/tridri-performance-neon-green-right-sleeve.png",
+    "fullBack": "/tridri-performance-neon-green-back.png"
   },
-  "ny-mappe-med-emner-3": {
-    "fullFront": "/tridri-performance-ny-mappe-med-emner-3-front.png",
-    "leftSleeve": "/tridri-performance-ny-mappe-med-emner-3-left-sleeve.png",
-    "rightSleeve": "/tridri-performance-ny-mappe-med-emner-3-right-sleeve.png",
-    "fullBack": "/tridri-performance-ny-mappe-med-emner-3-back.png"
+  "neon-orange": {
+    "fullFront": "/tridri-performance-neon-orange-front.png",
+    "leftSleeve": "/tridri-performance-neon-orange-left-sleeve.png",
+    "rightSleeve": "/tridri-performance-neon-orange-right-sleeve.png",
+    "fullBack": "/tridri-performance-neon-orange-back.png"
+  },
+  "neon-yellow": {
+    "fullFront": "/tridri-performance-neon-yellow-front.png",
+    "leftSleeve": "/tridri-performance-neon-yellow-left-sleeve.png",
+    "rightSleeve": "/tridri-performance-neon-yellow-right-sleeve.png",
+    "fullBack": "/tridri-performance-neon-yellow-back.png"
   },
   "bottle-green": {
     "fullFront": "/tridri-performance-bottle-green-front.png",
     "leftSleeve": "/tridri-performance-bottle-green-left-sleeve.png",
     "rightSleeve": "/tridri-performance-bottle-green-right-sleeve.png",
     "fullBack": "/tridri-performance-bottle-green-back.png"
+  },
+  "orange": {
+    "fullFront": "/tridri-performance-orange-front.png",
+    "leftSleeve": "/tridri-performance-orange-left-sleeve.png",
+    "rightSleeve": "/tridri-performance-orange-right-sleeve.png",
+    "fullBack": "/tridri-performance-orange-back.png"
   },
   "black": {
     "fullFront": "/tridri-performance-black-front.png",
