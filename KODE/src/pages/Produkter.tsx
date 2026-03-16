@@ -87,8 +87,8 @@ const productCardImages: Record<string, { front: string; back: string }> = {
     back: "/model-premium-hoodie-back.jpg",
   },
   "byb-ladies-fluffy-sweatpants": {
-    front: "/BY291_Mw1-14274 for.webp",
-    back: "/BY291_Mw2-14274 bag.webp",
+    front: "/model-by-fluffy-pants-front.png",
+    back: "/model-by-fluffy-pants-back.png",
   },
 };
 
@@ -97,7 +97,6 @@ const edgeFillScaleByProduct: Record<string, string> = {
   "heavyweight-tshirt": "scale-[1.16]",
   "standard-hoodie": "scale-[1.14]",
   "premium-hoodie": "scale-[1.14]",
-  "byb-ladies-fluffy-sweatpants": "scale-[1.18]",
 };
 
 const Produkter = () => {
