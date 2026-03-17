@@ -144,6 +144,7 @@ type CartDesignEntry = {
     placementId: string;
     fileName: string;
     fileRef: string;
+    uploadFile?: string | null;
     pos: { x: number; y: number };
     posPct?: { x: number; y: number };
     scale: number;
@@ -683,6 +684,7 @@ const DesignUpload = () => {
       const existing = prev[targetPlacementId] ?? [emptyDesign()];
       const nextElement: PlacementDesign = {
         file: sourceDesign.file,
+        uploadFile: sourceDesign.uploadFile ?? null,
         fileName: sourceDesign.fileName,
         pos: { x: 0, y: 0 },
         posPct: { x: 0, y: 0 },
@@ -1611,6 +1613,33 @@ const clampStepIndex = (step: number, maxBaseSteps: number) => {
   return Math.max(0, Math.min(max, Math.floor(step)));
 };
 
+const isAiFileName = (name: string) => name.toLowerCase().endsWith(".ai");
+
+const AI_DATA_URL_PREFIXES = [
+  "data:application/postscript",
+  "data:application/illustrator",
+  "data:application/eps",
+  "data:application/x-illustrator",
+  "data:application/vnd.adobe.illustrator",
+];
+
+const isAiDataUrl = (value: string) => {
+  const lower = value.toLowerCase();
+  return AI_DATA_URL_PREFIXES.some((prefix) => lower.startsWith(prefix));
+};
+
+const createAiPreviewDataUrl = (fileName: string) => {
+  const safeName = fileName.replace(/[<>&\"']/g, "_");
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='1200' viewBox='0 0 1200 1200'>
+    <rect width='1200' height='1200' fill='#f3f4f6'/>
+    <rect x='180' y='260' width='840' height='680' rx='48' fill='none' stroke='#cbd5e1' stroke-width='16'/>
+    <text x='600' y='520' text-anchor='middle' font-family='Arial, Helvetica, sans-serif' font-size='120' font-weight='700' fill='#334155'>AI</text>
+    <text x='600' y='620' text-anchor='middle' font-family='Arial, Helvetica, sans-serif' font-size='44' fill='#64748b'>${safeName}</text>
+    <text x='600' y='690' text-anchor='middle' font-family='Arial, Helvetica, sans-serif' font-size='36' fill='#94a3b8'>Preview placeholder</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
 const sanitizePersistedDesigns = (
   value: PersistedDesignUploadState["designs"] | undefined
 ): Record<string, PlacementDesign[]> | null => {
@@ -1624,20 +1653,33 @@ const sanitizePersistedDesigns = (
     }
     const cleaned = rawList
       .filter((item) => item && typeof item === "object")
-      .map((item) => ({
-        file: typeof item.file === "string" || item.file === null ? item.file : null,
-        fileName: typeof item.fileName === "string" ? item.fileName : "",
-        pos: {
-          x: typeof item.pos?.x === "number" ? item.pos.x : 0,
-          y: typeof item.pos?.y === "number" ? item.pos.y : 0,
-        },
-        posPct:
-          typeof item.posPct?.x === "number" && typeof item.posPct?.y === "number"
-            ? { x: item.posPct.x, y: item.posPct.y }
-            : undefined,
-        scale: typeof item.scale === "number" ? item.scale : 1,
-        sizeCategory: typeof item.sizeCategory === "string" ? item.sizeCategory : "1-6",
-      }));
+      .map((item) => {
+        const file = typeof item.file === "string" || item.file === null ? item.file : null;
+        const fileName = typeof item.fileName === "string" ? item.fileName : "";
+        const uploadFile =
+          typeof (item as { uploadFile?: unknown }).uploadFile === "string"
+            ? (item as { uploadFile?: string }).uploadFile ?? null
+            : (item as { uploadFile?: unknown }).uploadFile === null
+            ? null
+            : null;
+        const shouldTreatAsAi = Boolean(uploadFile || (typeof file === "string" && (isAiDataUrl(file) || isAiFileName(fileName))));
+        const preservedAiUpload = uploadFile || (shouldTreatAsAi && typeof file === "string" ? file : null);
+        return {
+          file: shouldTreatAsAi ? createAiPreviewDataUrl(fileName || "uploaded.ai") : file,
+          uploadFile: preservedAiUpload,
+          fileName,
+          pos: {
+            x: typeof item.pos?.x === "number" ? item.pos.x : 0,
+            y: typeof item.pos?.y === "number" ? item.pos.y : 0,
+          },
+          posPct:
+            typeof item.posPct?.x === "number" && typeof item.posPct?.y === "number"
+              ? { x: item.posPct.x, y: item.posPct.y }
+              : undefined,
+          scale: typeof item.scale === "number" ? item.scale : 1,
+          sizeCategory: typeof item.sizeCategory === "string" ? item.sizeCategory : "1-6",
+        };
+      });
     next[step.id] = cleaned.length > 0 ? cleaned : [emptyDesign()];
   }
   return next;
@@ -1709,7 +1751,8 @@ const getLogoItems = (designMap: Record<string, PlacementDesign[]>) =>
       .map((design) => ({
         placementId,
         fileName: design.fileName || "uploaded-design",
-        fileRef: design.file || "",
+        fileRef: design.uploadFile || design.file || "",
+        uploadFile: design.uploadFile || null,
         pos: design.pos,
         posPct: design.posPct,
         scale: design.scale,
@@ -1880,7 +1923,18 @@ const readDesignCart = (): CartDesignEntry[] => {
                 .map((entry) => ({
                   placementId: typeof entry.placementId === "string" ? entry.placementId : "fullFront",
                   fileName: typeof entry.fileName === "string" ? entry.fileName : "uploaded-design",
-                  fileRef: typeof entry.fileRef === "string" ? entry.fileRef : "",
+                  fileRef:
+                    typeof entry.uploadFile === "string"
+                      ? entry.uploadFile
+                      : typeof entry.fileRef === "string"
+                      ? entry.fileRef
+                      : "",
+                  uploadFile:
+                    typeof entry.uploadFile === "string"
+                      ? entry.uploadFile
+                      : entry.uploadFile === null
+                      ? null
+                      : undefined,
                   pos: {
                     x: typeof entry.pos?.x === "number" ? entry.pos.x : 0,
                     y: typeof entry.pos?.y === "number" ? entry.pos.y : 0,

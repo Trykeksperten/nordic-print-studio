@@ -22,6 +22,7 @@ export const resolveAssetPath = (src: string) => {
 
 export interface PlacementDesign {
   file: string | null;
+  uploadFile?: string | null;
   fileName: string;
   pos: { x: number; y: number };
   posPct?: { x: number; y: number };
@@ -458,12 +459,28 @@ export const getMockupSourceAndTransform = (
 
 export const emptyDesign = (): PlacementDesign => ({
   file: null,
+  uploadFile: null,
   fileName: "",
   pos: { x: 0, y: 0 },
   posPct: { x: 0, y: 0 },
   scale: 1,
   sizeCategory: "1-6",
 });
+
+const isAiFileName = (name: string) => name.toLowerCase().endsWith(".ai");
+
+const createAiPreviewDataUrl = (fileName: string) => {
+  const safeLabel = fileName.replace(/[<>&]/g, "");
+  const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <rect width="800" height="800" fill="#f3f4f6"/>
+  <rect x="80" y="80" width="640" height="640" rx="36" fill="#e5e7eb" stroke="#cbd5e1" stroke-width="8"/>
+  <text x="400" y="355" text-anchor="middle" font-family="Arial, sans-serif" font-size="132" font-weight="700" fill="#1f2937">AI</text>
+  <text x="400" y="430" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="#475569">Preview not available</text>
+  <text x="400" y="480" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#64748b">${safeLabel}</text>
+</svg>`.trim();
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+};
 
 const PlacementStep = ({
   placementId,
@@ -575,14 +592,21 @@ const PlacementStep = ({
     }
     const reader = new FileReader();
     reader.onload = (ev) => {
+      const uploadedDataUrl = ev.target?.result as string;
+      const aiUpload = isAiFileName(file.name);
+      const previewDataUrl = aiUpload ? createAiPreviewDataUrl(file.name) : uploadedDataUrl;
       const nextDesign: PlacementDesign = {
         ...(shouldAppendNew ? emptyDesign() : targetDesign),
-        file: ev.target?.result as string,
+        file: previewDataUrl,
+        uploadFile: aiUpload ? uploadedDataUrl : null,
         fileName: file.name,
         pos: { x: 0, y: 0 },
         posPct: { x: 0, y: 0 },
         scale: getDefaultScale((shouldAppendNew ? "1-6" : targetDesign.sizeCategory), baseLogoWidthCm),
       };
+      if (aiUpload) {
+        toast.info(lang === "da" ? "AI-filen sendes korrekt, men vises som placeholder i preview." : "AI file is uploaded correctly, but shown as a placeholder in preview.");
+      }
       if (shouldAppendNew) {
         const nextDesigns = [...designs, nextDesign];
         onDesignsChange(nextDesigns);
