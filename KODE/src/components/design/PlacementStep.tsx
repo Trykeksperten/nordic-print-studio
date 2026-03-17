@@ -383,7 +383,8 @@ const sleeveMirrorOverridesByProduct: Partial<
 const hardLockedMirrorByPlacement: Partial<
   Record<string, Partial<Record<"leftSleeve" | "rightSleeve", boolean>>>
 > = {
-  // Explicit hard lock requested: Acid tee step 2 must show left side.
+  // Hard-locked orientation map (kept explicit to avoid accidental auto-flips).
+  // Acid tee step 2 must show left side.
   "byb-oversized-acid-wash-tee": {
     leftSleeve: false,
     rightSleeve: true,
