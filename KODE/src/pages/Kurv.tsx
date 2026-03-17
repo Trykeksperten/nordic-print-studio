@@ -13,6 +13,7 @@ type PlacementDesign = {
   file: string | null;
   fileName: string;
   pos: { x: number; y: number };
+  posPct?: { x: number; y: number };
   scale: number;
   sizeCategory: string;
 };
@@ -31,6 +32,7 @@ type CartDesignEntry = {
     fileName: string;
     fileRef: string;
     pos: { x: number; y: number };
+    posPct?: { x: number; y: number };
     scale: number;
     sizeCategory: string;
   }>;
@@ -178,9 +180,13 @@ const drawPlacementMockup = async (entry: CartDesignEntry, placementId: string):
     if (!design.file) continue;
     const logoImg = await loadImage(design.file);
     const visualScale = getVisualScale(design.scale, baseLogoWidthCm, entry.selectedProduct, placementId);
+    const offsetX =
+      typeof design.posPct?.x === "number" ? design.posPct.x * areaW : design.pos.x;
+    const offsetY =
+      typeof design.posPct?.y === "number" ? design.posPct.y * areaH : design.pos.y;
     ctx.save();
-    const centerX = areaX + areaW / 2 + design.pos.x;
-    const centerY = areaY + areaH / 2 + design.pos.y;
+    const centerX = areaX + areaW / 2 + offsetX;
+    const centerY = areaY + areaH / 2 + offsetY;
     ctx.translate(centerX, centerY);
     ctx.scale(visualScale, visualScale);
     drawContainImage(ctx, logoImg, -areaW / 2, -areaH / 2, areaW, areaH);

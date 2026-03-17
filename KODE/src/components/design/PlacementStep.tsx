@@ -24,6 +24,7 @@ export interface PlacementDesign {
   file: string | null;
   fileName: string;
   pos: { x: number; y: number };
+  posPct?: { x: number; y: number };
   scale: number;
   sizeCategory: string;
 }
@@ -418,6 +419,7 @@ export const emptyDesign = (): PlacementDesign => ({
   file: null,
   fileName: "",
   pos: { x: 0, y: 0 },
+  posPct: { x: 0, y: 0 },
   scale: 1,
   sizeCategory: "1-6",
 });
@@ -497,6 +499,26 @@ const PlacementStep = ({
     onDesignsChange(newDesigns);
   };
 
+  const toPosPct = (x: number, y: number, areaWidthPx: number, areaHeightPx: number) => ({
+    x: areaWidthPx > 0 ? x / areaWidthPx : 0,
+    y: areaHeightPx > 0 ? y / areaHeightPx : 0,
+  });
+
+  const getDesignPosPx = (design: PlacementDesign) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    const printAreaWidthPx = rect ? (rect.width * areaPos.width) / 100 : 0;
+    const printAreaHeightPx = rect ? (rect.height * areaPos.height) / 100 : 0;
+
+    if (design.posPct && Number.isFinite(design.posPct.x) && Number.isFinite(design.posPct.y)) {
+      return {
+        x: design.posPct.x * printAreaWidthPx,
+        y: design.posPct.y * printAreaHeightPx,
+      };
+    }
+
+    return design.pos;
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -517,6 +539,7 @@ const PlacementStep = ({
         file: ev.target?.result as string,
         fileName: file.name,
         pos: { x: 0, y: 0 },
+        posPct: { x: 0, y: 0 },
         scale: getDefaultScale((shouldAppendNew ? "1-6" : targetDesign.sizeCategory), baseLogoWidthCm),
       };
       if (shouldAppendNew) {
@@ -597,8 +620,9 @@ const PlacementStep = ({
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
-    dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: currentDesign.pos.x, startPosY: currentDesign.pos.y };
-  }, [currentDesign.pos]);
+    const currentPos = getDesignPosPx(currentDesign);
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: currentPos.x, startPosY: currentPos.y };
+  }, [currentDesign]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (isCalibratingSnap) {
@@ -645,6 +669,7 @@ const PlacementStep = ({
     updateDesign(activeIndex, {
       ...currentDesign,
       pos: { x: snapX ? targetOffsetX : rawX, y: snapY ? targetOffsetY : rawY },
+      posPct: toPosPct(snapX ? targetOffsetX : rawX, snapY ? targetOffsetY : rawY, printAreaWidthPx, printAreaHeightPx),
     });
   }, [isCalibratingSnap, calibratingAxis, updateSnapTargetFromClient, isDragging, isDraggingArea, isResizingArea, currentDesign, activeIndex, areaPos.width, areaPos.height, snapGuidePosition.x, snapGuidePosition.y]);
 
@@ -672,8 +697,9 @@ const PlacementStep = ({
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     setIsDragging(true);
-    dragRef.current = { startX: touch.clientX, startY: touch.clientY, startPosX: currentDesign.pos.x, startPosY: currentDesign.pos.y };
-  }, [currentDesign.pos]);
+    const currentPos = getDesignPosPx(currentDesign);
+    dragRef.current = { startX: touch.clientX, startY: touch.clientY, startPosX: currentPos.x, startPosY: currentPos.y };
+  }, [currentDesign]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!isDragging || !dragRef.current) return;
@@ -693,6 +719,7 @@ const PlacementStep = ({
     updateDesign(activeIndex, {
       ...currentDesign,
       pos: { x: snapX ? targetOffsetX : rawX, y: snapY ? targetOffsetY : rawY },
+      posPct: toPosPct(snapX ? targetOffsetX : rawX, snapY ? targetOffsetY : rawY, printAreaWidthPx, printAreaHeightPx),
     });
   }, [isDragging, currentDesign, activeIndex, areaPos.width, areaPos.height, snapGuidePosition.x, snapGuidePosition.y]);
 
@@ -829,12 +856,15 @@ const PlacementStep = ({
             {/* All uploaded designs rendered on mockup */}
             {uploadedDesigns.map((d, i) => (
               <div key={i} className="absolute" style={{ ...printArea, pointerEvents: "none" }}>
+                {(() => {
+                  const designPos = getDesignPosPx(d);
+                  return (
                 <img
                   src={d.file!}
                   alt={`Design ${i + 1}`}
                   className="w-full h-full object-contain"
                   style={{
-                    transform: `translate(${d.pos.x}px, ${d.pos.y}px) scale(${getVisualScale(d.scale, baseLogoWidthCm, productId, placementId)})`,
+                    transform: `translate(${designPos.x}px, ${designPos.y}px) scale(${getVisualScale(d.scale, baseLogoWidthCm, productId, placementId)})`,
                     pointerEvents: designs.indexOf(d) === activeIndex ? "auto" : "none",
                     opacity: designs.indexOf(d) === activeIndex ? 1 : 0.5,
                   }}
@@ -842,6 +872,8 @@ const PlacementStep = ({
                   onTouchStart={designs.indexOf(d) === activeIndex ? handleTouchStart : undefined}
                   draggable={false}
                 />
+                  );
+                })()}
               </div>
             ))}
 

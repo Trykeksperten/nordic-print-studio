@@ -145,6 +145,7 @@ type CartDesignEntry = {
     fileName: string;
     fileRef: string;
     pos: { x: number; y: number };
+    posPct?: { x: number; y: number };
     scale: number;
     sizeCategory: string;
   }>;
@@ -684,6 +685,7 @@ const DesignUpload = () => {
         file: sourceDesign.file,
         fileName: sourceDesign.fileName,
         pos: { x: 0, y: 0 },
+        posPct: { x: 0, y: 0 },
         scale: sourceDesign.scale,
         sizeCategory: sourceDesign.sizeCategory,
       };
@@ -1469,7 +1471,7 @@ const ColorPicker = ({
   const [hoverPlacementByColor, setHoverPlacementByColor] = useState<Record<string, PlacementImageKey>>({});
   const hoverPreviewOrder: PlacementImageKey[] =
     productId === "performance-tshirt"
-      ? ["leftSleeve", "fullBack", "rightSleeve", "fullFront"]
+      ? ["rightSleeve", "fullBack", "leftSleeve", "fullFront"]
       : ["rightSleeve", "fullBack", "leftSleeve", "fullFront"];
 
   useEffect(() => {
@@ -1629,6 +1631,10 @@ const sanitizePersistedDesigns = (
           x: typeof item.pos?.x === "number" ? item.pos.x : 0,
           y: typeof item.pos?.y === "number" ? item.pos.y : 0,
         },
+        posPct:
+          typeof item.posPct?.x === "number" && typeof item.posPct?.y === "number"
+            ? { x: item.posPct.x, y: item.posPct.y }
+            : undefined,
         scale: typeof item.scale === "number" ? item.scale : 1,
         sizeCategory: typeof item.sizeCategory === "string" ? item.sizeCategory : "1-6",
       }));
@@ -1705,6 +1711,7 @@ const getLogoItems = (designMap: Record<string, PlacementDesign[]>) =>
         fileName: design.fileName || "uploaded-design",
         fileRef: design.file || "",
         pos: design.pos,
+        posPct: design.posPct,
         scale: design.scale,
         sizeCategory: design.sizeCategory,
       }))
@@ -1783,10 +1790,14 @@ const drawPlacementMockup = async (
     if (!design.file) continue;
     const logoImg = await loadImage(design.file);
     const visualScale = getVisualScale(design.scale, baseLogoWidthCm, entry.selectedProduct, placementId);
+    const offsetX =
+      typeof design.posPct?.x === "number" ? design.posPct.x * areaW : design.pos.x;
+    const offsetY =
+      typeof design.posPct?.y === "number" ? design.posPct.y * areaH : design.pos.y;
 
     ctx.save();
-    const centerX = areaX + areaW / 2 + design.pos.x;
-    const centerY = areaY + areaH / 2 + design.pos.y;
+    const centerX = areaX + areaW / 2 + offsetX;
+    const centerY = areaY + areaH / 2 + offsetY;
     ctx.translate(centerX, centerY);
     ctx.scale(visualScale, visualScale);
     drawContainImage(ctx, logoImg, -areaW / 2, -areaH / 2, areaW, areaH);
@@ -1874,6 +1885,10 @@ const readDesignCart = (): CartDesignEntry[] => {
                     x: typeof entry.pos?.x === "number" ? entry.pos.x : 0,
                     y: typeof entry.pos?.y === "number" ? entry.pos.y : 0,
                   },
+                  posPct:
+                    typeof entry.posPct?.x === "number" && typeof entry.posPct?.y === "number"
+                      ? { x: entry.posPct.x, y: entry.posPct.y }
+                      : undefined,
                   scale: typeof entry.scale === "number" ? entry.scale : 1,
                   sizeCategory: typeof entry.sizeCategory === "string" ? entry.sizeCategory : "1-6",
                 }))
