@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated duplicate assets in public (e.g. "name 2.jpg", "name 3.png")
+KODE/public/* [0-9]*.jpg
+KODE/public/* [0-9]*.jpeg
+KODE/public/* [0-9]*.png
+KODE/public/* [0-9]*.webp
+KODE/public/* [0-9]*.avif

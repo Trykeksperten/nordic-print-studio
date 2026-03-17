@@ -344,12 +344,35 @@ const forceMirrorRightSleeveProducts = new Set([
 const sleeveMirrorOverridesByProduct: Partial<
   Record<string, Partial<Record<"leftSleeve" | "rightSleeve", boolean>>>
 > = {
+  // Explicit per-product locking of sleeve orientation.
+  // This prevents automatic logic changes unless we edit a specific product here.
+  "basic-tshirt": {
+    leftSleeve: true,
+    rightSleeve: true,
+  },
+  "heavyweight-tshirt": {
+    leftSleeve: true,
+    rightSleeve: true,
+  },
+  "authentic-sweat": {
+    leftSleeve: true,
+    rightSleeve: false,
+  },
+  "standard-hoodie": {
+    leftSleeve: true,
+    rightSleeve: true,
+  },
+  "premium-hoodie": {
+    leftSleeve: true,
+    rightSleeve: true,
+  },
   "byb-oversized-acid-wash-tee": {
     leftSleeve: true,
     rightSleeve: true,
   },
   "performance-tshirt": {
-    rightSleeve: false,
+    leftSleeve: true,
+    rightSleeve: true,
   },
   "byb-ladies-fluffy-sweatpants": {
     leftSleeve: false,
