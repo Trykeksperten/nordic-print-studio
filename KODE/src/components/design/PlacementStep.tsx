@@ -335,6 +335,9 @@ const snapCenterLockedProducts = new Set([
   "byb-ladies-fluffy-sweatpants",
 ]);
 
+const isSnapCenterLockedProduct = (productId: string) =>
+  snapCenterLockedProducts.has(productId) || /fluffy-sweatpants/i.test(productId);
+
 const forceMirrorRightSleeveProducts = new Set([
   "basic-tshirt",
   "heavyweight-tshirt",
@@ -476,7 +479,7 @@ const PlacementStep = ({
   showColorBadge = true,
 }: PlacementStepProps) => {
   const { lang } = useLanguage();
-  const canAdjustSnapCenter = !snapCenterLockedProducts.has(productId);
+  const canAdjustSnapCenter = !isSnapCenterLockedProduct(productId);
   const areaLocked = placementId === "fullFront" || placementId === "leftSleeve" || placementId === "rightSleeve" || placementId === "fullBack";
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
