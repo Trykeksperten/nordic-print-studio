@@ -332,6 +332,7 @@ const snapCenterLockedProducts = new Set([
   "premium-hoodie",
   "byb-oversized-acid-wash-tee",
   "performance-tshirt",
+  "byb-ladies-fluffy-sweatpants",
 ]);
 
 const forceMirrorRightSleeveProducts = new Set([
