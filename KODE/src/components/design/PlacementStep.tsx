@@ -327,12 +327,11 @@ const sharedSleeveSourceSideByProduct: Record<string, "left" | "right"> = {
 const snapCenterLockedProducts = new Set([
   "basic-tshirt",
   "heavyweight-tshirt",
+  "authentic-sweat",
   "standard-hoodie",
   "premium-hoodie",
-  "authentic-sweat",
   "byb-oversized-acid-wash-tee",
   "performance-tshirt",
-  "byb-ladies-fluffy-sweatpants",
 ]);
 
 const forceMirrorRightSleeveProducts = new Set([
