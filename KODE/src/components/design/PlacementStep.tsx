@@ -367,7 +367,7 @@ const sleeveMirrorOverridesByProduct: Partial<
     rightSleeve: true,
   },
   "byb-oversized-acid-wash-tee": {
-    leftSleeve: true,
+    leftSleeve: false,
     rightSleeve: true,
   },
   "performance-tshirt": {
@@ -375,6 +375,16 @@ const sleeveMirrorOverridesByProduct: Partial<
     rightSleeve: true,
   },
   "byb-ladies-fluffy-sweatpants": {
+    leftSleeve: false,
+    rightSleeve: true,
+  },
+};
+
+const hardLockedMirrorByPlacement: Partial<
+  Record<string, Partial<Record<"leftSleeve" | "rightSleeve", boolean>>>
+> = {
+  // Explicit hard lock requested: Acid tee step 2 must show left side.
+  "byb-oversized-acid-wash-tee": {
     leftSleeve: false,
     rightSleeve: true,
   },
@@ -431,7 +441,11 @@ export const getMockupSourceAndTransform = (
     (placementId === "leftSleeve" || placementId === "rightSleeve")
       ? sleeveMirrorOverridesByProduct[productId]?.[placementId]
       : undefined;
-  const mirrorMockup = mirrorOverride ?? mirrorMockupDefault;
+  const hardLockOverride =
+    (placementId === "leftSleeve" || placementId === "rightSleeve")
+      ? hardLockedMirrorByPlacement[productId]?.[placementId]
+      : undefined;
+  const mirrorMockup = hardLockOverride ?? mirrorOverride ?? mirrorMockupDefault;
   const mockupTransform = `${mirrorMockup ? "scaleX(-1) " : ""}scale(1)`;
 
   return { src: resolveAssetPath(baseMockupImage), transform: mockupTransform };
@@ -817,7 +831,11 @@ const PlacementStep = ({
     (placementId === "leftSleeve" || placementId === "rightSleeve")
       ? sleeveMirrorOverridesByProduct[productId]?.[placementId]
       : undefined;
-  const mirrorMockup = mirrorOverride ?? mirrorMockupDefault;
+  const hardLockOverride =
+    (placementId === "leftSleeve" || placementId === "rightSleeve")
+      ? hardLockedMirrorByPlacement[productId]?.[placementId]
+      : undefined;
+  const mirrorMockup = hardLockOverride ?? mirrorOverride ?? mirrorMockupDefault;
   const mockupTransform = `${mirrorMockup ? "scaleX(-1) " : ""}scale(1)`;
   const uploadedDesigns = designs.filter(d => d.file);
 
