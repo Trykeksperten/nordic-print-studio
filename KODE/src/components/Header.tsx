@@ -68,7 +68,7 @@ const Header = () => {
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="container mx-auto flex items-center justify-between h-16 px-4 lg:px-8">
         {/* Logo */}
-        <Link to="/tekstiltryk/produkter" className="font-bold text-xl tracking-tight text-foreground">
+        <Link to="/tekstiltryk/produkter" className="font-bold text-[1.51rem] tracking-tight text-foreground">
           Trykeksperten
         </Link>
 
