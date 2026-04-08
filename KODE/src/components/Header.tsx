@@ -33,6 +33,7 @@ const Header = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const logoSrc = `${import.meta.env.BASE_URL}trykeksperten-logo.png`;
 
   const syncCartCount = useCallback(() => {
     setCartCount(readCartCount());
@@ -70,7 +71,7 @@ const Header = () => {
         {/* Logo */}
         <Link to="/tekstiltryk/produkter" className="inline-flex items-center">
           <img
-            src="/trykeksperten-logo.png"
+            src={logoSrc}
             alt="Trykeksperten"
             className="h-12 md:h-14 w-auto object-contain"
           />
