@@ -23,6 +23,11 @@ import {
 } from "@/lib/autoTshirtVariants";
 import { autoBybLadiesFluffySweatpantsColorMockups } from "@/lib/autoFolderProductVariants";
 import { FORMINIT_ACTION_URL, submitToForminit } from "@/lib/forminit";
+import {
+  isDataUrl,
+  prepareDesignMapForCartStorage,
+  resolveUploadRefToDataUrl,
+} from "@/lib/uploadRefs";
 
 const steps = [
   { id: "fullFront" },
@@ -781,6 +786,10 @@ const DesignUpload = () => {
       return;
     }
 
+    const rawDesigns = designs;
+    const placementIds = getUsedPlacements(rawDesigns);
+    const storedDesigns = await prepareDesignMapForCartStorage(rawDesigns).catch(() => rawDesigns);
+    const cartTimestamp = Date.now();
     const entryBase: CartDesignEntry = {
       id: currentCartId,
       selectedProduct,
@@ -789,16 +798,23 @@ const DesignUpload = () => {
       selectedColorName: selectedColorData?.[lang] ?? selectedColor,
       sizeQuantities,
       totalQuantity: quantity,
-      placementsUsed: getUsedPlacements(designs),
-      logoItems: getLogoItems(designs),
-      uploadedFileRefs: getUploadedFileRefs(designs),
+      placementsUsed: placementIds,
+      logoItems: getLogoItems(storedDesigns),
+      uploadedFileRefs: getUploadedFileRefs(storedDesigns),
       mockupRef: `${selectedProduct}::${selectedColor}`,
-      designs,
-      updatedAt: Date.now(),
+      designs: storedDesigns,
+      updatedAt: cartTimestamp,
     };
     let generatedMockups: QuoteMockupPayload[] = [];
     try {
-      generatedMockups = await buildMockupsForEntry(entryBase, lang);
+      generatedMockups = await buildMockupsForEntry(
+        {
+          ...entryBase,
+          logoItems: getLogoItems(rawDesigns),
+          designs: rawDesigns,
+        },
+        lang
+      );
     } catch {
       // Never block adding to cart if mockup rendering fails.
       generatedMockups = [];
@@ -1861,7 +1877,11 @@ const loadImage = (src: string) =>
   });
 
 const dataUrlToBlob = async (dataUrl: string) => {
-  const response = await fetch(dataUrl);
+  const resolved = await resolveUploadRefToDataUrl(dataUrl);
+  if (!resolved || !isDataUrl(resolved)) {
+    throw new Error("Invalid upload reference");
+  }
+  const response = await fetch(resolved);
   return response.blob();
 };
 
@@ -1900,8 +1920,10 @@ const drawPlacementMockup = async (
   const areaH = (area.height / 100) * canvas.height;
 
   for (const design of uploaded) {
-    if (!design.file) continue;
-    const logoImg = await loadImage(design.file);
+    const resolvedUpload = await resolveUploadRefToDataUrl(design.uploadFile || null);
+    const imageSource = resolvedUpload || design.file;
+    if (!imageSource) continue;
+    const logoImg = await loadImage(imageSource);
     const offsetX =
       typeof design.posPct?.x === "number" ? design.posPct.x * areaW : design.pos.x;
     const offsetY =

@@ -109,7 +109,7 @@ const Produkter = () => {
 
   return (
     <Layout>
-      <section className="py-1 md:py-2 bg-white">
+      <section className="pt-8 md:pt-12 pb-2 md:pb-3 bg-white">
         <div className="container mx-auto px-4 lg:px-8">
           <motion.div
             className="max-w-2xl"

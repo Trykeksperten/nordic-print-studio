@@ -8,9 +8,11 @@ import { defaultPrintAreas, getMockupSourceAndTransform } from "@/components/des
 import { calculateOrderSetupFromPlacementCount, calculateTotal } from "@/components/design/PriceSummary";
 import { getProductColors } from "@/lib/productColors";
 import { Search } from "lucide-react";
+import { resolveUploadRefToDataUrl } from "@/lib/uploadRefs";
 
 type PlacementDesign = {
   file: string | null;
+  uploadFile?: string | null;
   fileName: string;
   pos: { x: number; y: number };
   posPct?: { x: number; y: number };
@@ -160,8 +162,10 @@ const drawPlacementMockup = async (entry: CartDesignEntry, placementId: string):
   const areaH = (area.height / 100) * canvas.height;
 
   for (const design of uploaded) {
-    if (!design.file) continue;
-    const logoImg = await loadImage(design.file);
+    const resolvedUpload = await resolveUploadRefToDataUrl(design.uploadFile || null);
+    const imageSource = resolvedUpload || design.file;
+    if (!imageSource) continue;
+    const logoImg = await loadImage(imageSource);
     const offsetX =
       typeof design.posPct?.x === "number" ? design.posPct.x * areaW : design.pos.x;
     const offsetY =
