@@ -66,10 +66,16 @@ const visualScaleAnchors = {
   at40: 1,
 };
 
-const SHIRT_WIDTH_CM = 45;
-const TORSO_WIDTH_PERCENT_OF_IMAGE = 58;
+const printableAreaWidthCmByPlacement: Record<string, number> = {
+  fullFront: 40,
+  fullBack: 40,
+  leftSleeve: 12,
+  rightSleeve: 12,
+};
+const LOCK_PRINT_AREA_CM = true;
 const CENTER_SNAP_THRESHOLD_PX = 14;
 const SNAP_TARGETS_STORAGE_KEY = "trykeksperten:snap-targets:v1";
+const PRINT_AREA_CM_STORAGE_KEY = "trykeksperten:print-area-cm:v1";
 
 const getGarmentCenterPercent = (productId: string, placementId: string) => {
   const isFrontOrBack = placementId === "fullFront" || placementId === "fullBack";
@@ -86,6 +92,45 @@ const getGarmentCenterPercent = (productId: string, placementId: string) => {
 };
 
 const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
+
+const getPrintAreaCmStorageMap = (): Record<string, number> => {
+  try {
+    const raw = localStorage.getItem(PRINT_AREA_CM_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") return {};
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .filter(([, value]) => typeof value === "number" && Number.isFinite(value))
+        .map(([key, value]) => [key, value as number])
+    );
+  } catch {
+    return {};
+  }
+};
+
+const setPrintAreaCmStorageValue = (key: string, value: number) => {
+  const map = getPrintAreaCmStorageMap();
+  map[key] = value;
+  try {
+    localStorage.setItem(PRINT_AREA_CM_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // Ignore storage errors.
+  }
+};
+
+const removePrintAreaCmStorageValue = (key: string) => {
+  const map = getPrintAreaCmStorageMap();
+  delete map[key];
+  try {
+    localStorage.setItem(PRINT_AREA_CM_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // Ignore storage errors.
+  }
+};
+
+const getDefaultPrintableAreaWidthCm = (placementId: string) =>
+  printableAreaWidthCmByPlacement[placementId] ?? 40;
 
 const getSnapStorageMap = (): Record<string, { x: number; y: number }> => {
   try {
@@ -504,6 +549,7 @@ const PlacementStep = ({
   const [isCalibratingSnap, setIsCalibratingSnap] = useState(false);
   const [calibratingAxis, setCalibratingAxis] = useState<"x" | "y" | "both">("both");
   const snapStorageKey = `${productId}:${placementId}`;
+  const printAreaCmStorageKey = `${productId}:${placementId}`;
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
 
   // Calibration state
@@ -511,6 +557,9 @@ const PlacementStep = ({
   const [areaPos, setAreaPos] = useState({ top: defaults.top, left: defaults.left, width: defaults.width, height: defaults.height });
   const [isDraggingArea, setIsDraggingArea] = useState(false);
   const [isResizingArea, setIsResizingArea] = useState(false);
+  const [printableAreaWidthCm, setPrintableAreaWidthCm] = useState(() =>
+    getDefaultPrintableAreaWidthCm(placementId)
+  );
   const areaDragRef = useRef<{ startX: number; startY: number; startTop: number; startLeft: number } | null>(null);
   const areaResizeRef = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -527,9 +576,19 @@ const PlacementStep = ({
     if (Number.isFinite(safeIndex)) setActiveIndex(safeIndex);
   }, [designs.length, focusRequest]);
 
-  // Convert from image-percent to real cm using torso width (without sleeves) as reference.
-  const torsoRelativeWidth = areaPos.width / TORSO_WIDTH_PERCENT_OF_IMAGE;
-  const baseLogoWidthCm = SHIRT_WIDTH_CM * torsoRelativeWidth;
+  useEffect(() => {
+    const saved = getPrintAreaCmStorageMap()[printAreaCmStorageKey];
+    const fallback = getDefaultPrintableAreaWidthCm(placementId);
+    if (typeof saved === "number" && Number.isFinite(saved) && saved > 0) {
+      setPrintableAreaWidthCm(saved);
+      return;
+    }
+    setPrintableAreaWidthCm(fallback);
+  }, [placementId, printAreaCmStorageKey, productId]);
+
+  // Physical scale: pixelsPerCm = printableAreaPx / printableAreaCm.
+  // We store scale as ratio of selected logo width to printable area width in cm.
+  const baseLogoWidthCm = printableAreaWidthCm;
   const currentSizeBoundsCm =
     sizeCategoryCmBounds[controlsDesign.sizeCategory] ?? sizeCategoryCmBounds["1-6"];
   const currentLogoWidthCm = useMemo(
@@ -640,6 +699,22 @@ const PlacementStep = ({
       ...controlsDesign,
       scale: clampScale(nextScale, controlsDesign.sizeCategory, baseLogoWidthCm),
     });
+  };
+
+  const handlePrintableAreaWidthCmChange = (rawValue: string) => {
+    if (LOCK_PRINT_AREA_CM) return;
+    const parsed = Number.parseFloat(rawValue);
+    if (!Number.isFinite(parsed)) return;
+    const clamped = Math.max(5, Math.min(80, parsed));
+    setPrintableAreaWidthCm(clamped);
+    setPrintAreaCmStorageValue(printAreaCmStorageKey, clamped);
+  };
+
+  const handleResetPrintableAreaWidthCm = () => {
+    if (LOCK_PRINT_AREA_CM) return;
+    const fallback = getDefaultPrintableAreaWidthCm(placementId);
+    setPrintableAreaWidthCm(fallback);
+    removePrintAreaCmStorageValue(printAreaCmStorageKey);
   };
 
   const snapTargetPercent = getGarmentCenterPercent(productId, placementId);
@@ -931,9 +1006,14 @@ const PlacementStep = ({
                 <img
                   src={d.file!}
                   alt={`Design ${i + 1}`}
-                  className="w-full h-full object-contain"
+                  className="absolute"
                   style={{
-                    transform: `translate(${designPos.x}px, ${designPos.y}px) scale(${getVisualScale(d.scale, baseLogoWidthCm, productId, placementId)})`,
+                    left: "50%",
+                    top: "50%",
+                    width: `${Math.max(0.1, d.scale) * 100}%`,
+                    height: "auto",
+                    maxWidth: "none",
+                    transform: `translate(-50%, -50%) translate(${designPos.x}px, ${designPos.y}px)`,
                     pointerEvents: designs.indexOf(d) === activeIndex ? "auto" : "none",
                     opacity: designs.indexOf(d) === activeIndex ? 1 : 0.5,
                   }}
@@ -1077,6 +1157,30 @@ const PlacementStep = ({
                 <span className="text-xs text-muted-foreground w-14 shrink-0 text-right whitespace-nowrap">
                   {currentLogoWidthCm.toFixed(1)} cm
                 </span>
+              </div>
+
+              <div className="mt-2 flex items-center gap-2">
+                <label className="text-[11px] text-muted-foreground shrink-0">
+                  {lang === "da" ? "Printområde (cm)" : "Print area (cm)"}
+                </label>
+                <input
+                  type="number"
+                  min={5}
+                  max={80}
+                  step={0.5}
+                  value={Number.isFinite(printableAreaWidthCm) ? printableAreaWidthCm : getDefaultPrintableAreaWidthCm(placementId)}
+                  onChange={(e) => handlePrintableAreaWidthCmChange(e.target.value)}
+                  disabled={LOCK_PRINT_AREA_CM}
+                  className="h-8 w-20 rounded border border-border bg-background px-2 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={handleResetPrintableAreaWidthCm}
+                  disabled={LOCK_PRINT_AREA_CM}
+                  className="text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  {LOCK_PRINT_AREA_CM ? (lang === "da" ? "Låst" : "Locked") : (lang === "da" ? "Nulstil" : "Reset")}
+                </button>
               </div>
 
               <div className="mt-3">
@@ -1327,7 +1431,7 @@ const getScaleBounds = (sizeCategory: string, baseLogoWidthCm: number) => {
 
   // Guard against invalid or effectively locked slider ranges.
   if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
-    const fallbackBase = SHIRT_WIDTH_CM * (40 / TORSO_WIDTH_PERCENT_OF_IMAGE);
+    const fallbackBase = 40;
     min = bounds.min / fallbackBase;
     max = bounds.max / fallbackBase;
   }

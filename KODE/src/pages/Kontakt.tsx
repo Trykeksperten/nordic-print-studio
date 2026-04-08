@@ -6,6 +6,7 @@ import Layout from "@/components/Layout";
 import { Mail, Phone, MapPin, Upload, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { FORMINIT_ACTION_URL, submitToForminit } from "@/lib/forminit";
 
 const ease = [0.32, 0.72, 0, 1] as const;
 const fadeUp = {
@@ -18,11 +19,47 @@ const fadeUp = {
 const Kontakt = () => {
   const { t, lang } = useLanguage();
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
-    toast.success(t("contactPage.success"));
+    if (isSubmitting) return;
+    const formData = new FormData(e.currentTarget);
+    const firstName = String(formData.get("fi-sender-firstName") ?? "").trim();
+    const lastName = String(formData.get("fi-sender-lastName") ?? "").trim();
+    const email = String(formData.get("fi-sender-email") ?? "").trim();
+    const phone = String(formData.get("fi-sender-phone") ?? "").trim();
+    const message = String(formData.get("fi-text-message") ?? "").trim();
+
+    const payload = new FormData();
+    payload.set("fi-sender-firstName", firstName);
+    payload.set("fi-sender-lastName", lastName);
+    payload.set("fi-sender-fullName", `${firstName} ${lastName}`.trim());
+    payload.set("fi-sender-email", email);
+    payload.set("fi-sender-phone", phone);
+    payload.set("fi-text-message", message);
+    payload.set("fi-metadata-source", "Kontakt page");
+    payload.set("fi-metadata-language", lang);
+
+    try {
+      setIsSubmitting(true);
+      const response = await submitToForminit(payload);
+      if (!response.ok) {
+        throw new Error(lang === "da" ? "Kunne ikke sende formularen." : "Could not submit the form.");
+      }
+      setSubmitted(true);
+      toast.success(t("contactPage.success"));
+    } catch (error) {
+      const messageText =
+        error instanceof Error
+          ? error.message
+          : lang === "da"
+          ? "Der opstod en fejl ved afsendelse."
+          : "An error occurred while sending.";
+      toast.error(messageText);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -47,24 +84,30 @@ const Kontakt = () => {
                   <p className="text-lg font-medium">{t("contactPage.success")}</p>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">{t("contactPage.name")}</label>
-                    <input required type="text" className="w-full h-11 bg-card rounded-lg px-3 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 outline-none card-shadow" />
+                <form onSubmit={handleSubmit} action={FORMINIT_ACTION_URL} method="POST" className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">{lang === "da" ? "Fornavn" : "First name"}</label>
+                      <input required name="fi-sender-firstName" type="text" className="w-full h-11 bg-card rounded-lg px-3 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 outline-none card-shadow" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">{lang === "da" ? "Efternavn" : "Last name"}</label>
+                      <input required name="fi-sender-lastName" type="text" className="w-full h-11 bg-card rounded-lg px-3 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 outline-none card-shadow" />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5">{t("contactPage.email")}</label>
-                    <input required type="email" className="w-full h-11 bg-card rounded-lg px-3 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 outline-none card-shadow" />
+                    <input required name="fi-sender-email" type="email" className="w-full h-11 bg-card rounded-lg px-3 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 outline-none card-shadow" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5">{t("contactPage.phone")}</label>
-                    <input type="tel" className="w-full h-11 bg-card rounded-lg px-3 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 outline-none card-shadow" />
+                    <input name="fi-sender-phone" type="tel" className="w-full h-11 bg-card rounded-lg px-3 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 outline-none card-shadow" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5">{t("contactPage.message")}</label>
-                    <textarea required rows={5} className="w-full bg-card rounded-lg px-3 py-2 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 outline-none resize-none card-shadow" />
+                    <textarea required name="fi-text-message" rows={5} className="w-full bg-card rounded-lg px-3 py-2 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 outline-none resize-none card-shadow" />
                   </div>
-                  <Button type="submit" variant="hero" size="lg" className="w-full">
+                  <Button type="submit" variant="hero" size="lg" className="w-full" disabled={isSubmitting}>
                     {t("contactPage.send")}
                   </Button>
                 </form>

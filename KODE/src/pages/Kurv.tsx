@@ -4,7 +4,7 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { defaultPrintAreas, getMockupSourceAndTransform, getVisualScale } from "@/components/design/PlacementStep";
+import { defaultPrintAreas, getMockupSourceAndTransform } from "@/components/design/PlacementStep";
 import { calculateOrderSetupFromPlacementCount, calculateTotal } from "@/components/design/PriceSummary";
 import { getProductColors } from "@/lib/productColors";
 import { Search } from "lucide-react";
@@ -128,22 +128,6 @@ const loadImage = (src: string) =>
     img.src = src;
   });
 
-const drawContainImage = (
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  x: number,
-  y: number,
-  width: number,
-  height: number
-) => {
-  const scale = Math.min(width / img.width, height / img.height);
-  const drawWidth = img.width * scale;
-  const drawHeight = img.height * scale;
-  const drawX = x + (width - drawWidth) / 2;
-  const drawY = y + (height - drawHeight) / 2;
-  ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-};
-
 const drawPlacementMockup = async (entry: CartDesignEntry, placementId: string): Promise<string | null> => {
   const area = defaultPrintAreas[placementId];
   if (!area) return null;
@@ -174,23 +158,22 @@ const drawPlacementMockup = async (entry: CartDesignEntry, placementId: string):
   const areaY = (area.top / 100) * canvas.height;
   const areaW = (area.width / 100) * canvas.width;
   const areaH = (area.height / 100) * canvas.height;
-  const baseLogoWidthCm = 45 * (area.width / 58);
 
   for (const design of uploaded) {
     if (!design.file) continue;
     const logoImg = await loadImage(design.file);
-    const visualScale = getVisualScale(design.scale, baseLogoWidthCm, entry.selectedProduct, placementId);
     const offsetX =
       typeof design.posPct?.x === "number" ? design.posPct.x * areaW : design.pos.x;
     const offsetY =
       typeof design.posPct?.y === "number" ? design.posPct.y * areaH : design.pos.y;
-    ctx.save();
+    const logoAspect = logoImg.width / Math.max(1, logoImg.height);
+    const targetWidthPx = Math.max(1, design.scale * areaW);
+    const targetHeightPx = targetWidthPx / Math.max(0.0001, logoAspect);
     const centerX = areaX + areaW / 2 + offsetX;
     const centerY = areaY + areaH / 2 + offsetY;
-    ctx.translate(centerX, centerY);
-    ctx.scale(visualScale, visualScale);
-    drawContainImage(ctx, logoImg, -areaW / 2, -areaH / 2, areaW, areaH);
-    ctx.restore();
+    const drawX = centerX - targetWidthPx / 2;
+    const drawY = centerY - targetHeightPx / 2;
+    ctx.drawImage(logoImg, drawX, drawY, targetWidthPx, targetHeightPx);
   }
 
   return canvas.toDataURL("image/jpeg", 0.82);

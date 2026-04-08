@@ -10,7 +10,6 @@ import PlacementStep, {
   defaultPrintAreas,
   emptyDesign,
   getMockupSourceAndTransform,
-  getVisualScale,
   resolveAssetPath,
 } from "@/components/design/PlacementStep";
 import { calculateOrderSetupFromPlacementCount, calculateTotal } from "@/components/design/PriceSummary";
@@ -23,6 +22,7 @@ import {
   autoStandardHoodieColorMockups,
 } from "@/lib/autoTshirtVariants";
 import { autoBybLadiesFluffySweatpantsColorMockups } from "@/lib/autoFolderProductVariants";
+import { FORMINIT_ACTION_URL, submitToForminit } from "@/lib/forminit";
 
 const steps = [
   { id: "fullFront" },
@@ -915,12 +915,12 @@ const DesignUpload = () => {
     }
 
     const formData = new FormData(e.currentTarget);
-    const name = String(formData.get("name") ?? formInputs.name).trim();
-    const email = String(formData.get("email") ?? formInputs.email).trim();
-    const phone = String(formData.get("phone") ?? formInputs.phone).trim();
-    const company = String(formData.get("company") ?? formInputs.company).trim();
-    const address = String(formData.get("address") ?? formInputs.address).trim();
-    const notes = String(formData.get("notes") ?? formInputs.notes).trim();
+    const name = String(formData.get("fi-sender-fullName") ?? formInputs.name).trim();
+    const email = String(formData.get("fi-sender-email") ?? formInputs.email).trim();
+    const phone = String(formData.get("fi-sender-phone") ?? formInputs.phone).trim();
+    const company = String(formData.get("fi-text-company") ?? formInputs.company).trim();
+    const address = String(formData.get("fi-text-address") ?? formInputs.address).trim();
+    const notes = String(formData.get("fi-text-notes") ?? formInputs.notes).trim();
 
     if (name.length < 2) {
       toast.error(lang === "da" ? "Indtast et gyldigt navn" : "Please enter a valid name");
@@ -933,7 +933,12 @@ const DesignUpload = () => {
       return;
     }
 
-    if (phone && phone.replace(/[^\d+]/g, "").length < 8) {
+    if (!address) {
+      toast.error(lang === "da" ? "Adresse er påkrævet" : "Address is required");
+      return;
+    }
+
+    if (!phone || phone.replace(/[^\d+]/g, "").length < 8) {
       toast.error(lang === "da" ? "Indtast et gyldigt telefonnummer" : "Please enter a valid phone number");
       return;
     }
@@ -973,13 +978,57 @@ const DesignUpload = () => {
       );
       const orderTotalIncVat = orderGarmentTotal + orderSetup.setupTotal + orderPrintTotal;
       const orderTotalExVat = orderTotalIncVat / 1.25;
-      const response = await fetch("/api/quote-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lang,
-          customer: { name, email, phone, company, address, notes },
-          cartItems: designCart.map((entry) => ({
+      const aggregatedSizeBreakdown = designCart.reduce<Record<string, number>>((acc, entry) => {
+        Object.entries(entry.sizeQuantities).forEach(([size, qty]) => {
+          acc[size] = (acc[size] ?? 0) + (Number(qty) || 0);
+        });
+        return acc;
+      }, {});
+      const placements = Array.from(new Set(quoteFiles.map((file) => file.placementId)));
+
+      const forminitPayload = new FormData();
+      const [firstName, ...lastNameParts] = name.split(/\s+/).filter(Boolean);
+      const lastName = lastNameParts.join(" ");
+      forminitPayload.set("fi-sender-firstName", firstName || name);
+      forminitPayload.set("fi-sender-lastName", lastName || "-");
+      forminitPayload.set("fi-sender-fullName", name);
+      forminitPayload.set("fi-sender-email", email);
+      forminitPayload.set("fi-sender-phone", phone);
+      forminitPayload.set("fi-text-company", company);
+      forminitPayload.set("fi-text-address", address);
+      forminitPayload.set("fi-text-notes", notes);
+      forminitPayload.set("fi-text-message", notes || (lang === "da" ? "Ingen bemærkninger." : "No notes."));
+      forminitPayload.set("fi-metadata-source", "DesignUpload checkout");
+      forminitPayload.set("fi-metadata-language", lang);
+      forminitPayload.set(
+        "fi-text-order-summary",
+        JSON.stringify(
+          {
+            productId: designCart[0]?.selectedProduct ?? selectedProduct,
+            productName: designCart[0]?.selectedProductName ?? selectedProductOption[lang],
+            colorValue: designCart[0]?.selectedColor ?? selectedColorData?.value ?? selectedColor,
+            colorName: designCart[0]?.selectedColorName ?? selectedColorData?.[lang] ?? selectedColor,
+            quantity: designCart.reduce((sum, entry) => sum + entry.totalQuantity, 0),
+            sizeBreakdown: aggregatedSizeBreakdown,
+            placements,
+            placementCount: placements.length,
+            logoCount: orderSetup.placementCount,
+            pricing: {
+              garmentTotal: orderGarmentTotal,
+              setupTotal: orderSetup.setupTotal,
+              printTotal: orderPrintTotal,
+              totalIncVat: orderTotalIncVat,
+              totalExVat: orderTotalExVat,
+            },
+          },
+          null,
+          2
+        )
+      );
+      forminitPayload.set(
+        "fi-text-cart-items",
+        JSON.stringify(
+          designCart.map((entry) => ({
             id: entry.id,
             productId: entry.selectedProduct,
             productName: entry.selectedProductName,
@@ -990,43 +1039,67 @@ const DesignUpload = () => {
             placements: entry.placementsUsed,
             placementCount: entry.placementsUsed.length,
             logoCount: entry.logoItems.length,
-            logoItems: entry.logoItems,
-            uploadedFileRefs: entry.uploadedFileRefs,
-            mockupRef: entry.mockupRef,
+            logoItems: entry.logoItems.map((logo) => ({
+              placementId: logo.placementId,
+              fileName: logo.fileName,
+              sizeCategory: logo.sizeCategory,
+              posPct: logo.posPct,
+              scale: logo.scale,
+            })),
           })),
-          order: {
-            productId: designCart[0]?.selectedProduct ?? selectedProduct,
-            productName: designCart[0]?.selectedProductName ?? selectedProductOption[lang],
-            colorValue: designCart[0]?.selectedColor ?? selectedColorData?.value ?? selectedColor,
-            colorName: designCart[0]?.selectedColorName ?? selectedColorData?.[lang] ?? selectedColor,
-            quantity: designCart.reduce((sum, entry) => sum + entry.totalQuantity, 0),
-            sizeBreakdown: designCart.reduce<Record<string, number>>((acc, entry) => {
-              Object.entries(entry.sizeQuantities).forEach(([size, qty]) => {
-                acc[size] = (acc[size] ?? 0) + (Number(qty) || 0);
-              });
-              return acc;
-            }, {}),
-            placements: Array.from(new Set(quoteFiles.map((file) => file.placementId))),
-            placementCount: Array.from(new Set(quoteFiles.map((file) => file.placementId))).length,
-            logoCount: orderSetup.placementCount,
-            pricing: {
-              garmentTotal: orderGarmentTotal,
-              setupTotal: orderSetup.setupTotal,
-              printTotal: orderPrintTotal,
-              totalIncVat: orderTotalIncVat,
-              totalExVat: orderTotalExVat,
-              firstPlacementFree: false,
-            },
-          },
-          files: quoteFiles,
-          mockups: generatedMockups,
-        }),
-      });
+          null,
+          2
+        )
+      );
+      forminitPayload.set(
+        "fi-text-files",
+        JSON.stringify(
+          quoteFiles.map((file) => ({
+            fileName: file.fileName,
+            placementId: file.placementId,
+            placementLabel: file.placementLabel,
+            sizeCategory: file.sizeCategory,
+          })),
+          null,
+          2
+        )
+      );
+      forminitPayload.set(
+        "fi-text-mockups",
+        JSON.stringify(
+          generatedMockups.map((mockup) => ({
+            fileName: mockup.fileName,
+            placementId: mockup.placementId,
+            placementLabel: mockup.placementLabel,
+          })),
+          null,
+          2
+        )
+      );
+      for (let i = 0; i < quoteFiles.length; i += 1) {
+        const file = quoteFiles[i];
+        try {
+          const blob = await dataUrlToBlob(file.dataUrl);
+          const safeName = file.fileName || `design-${i + 1}.png`;
+          forminitPayload.append("fi-file-uploadedDesigns", new File([blob], safeName, { type: blob.type || "image/png" }));
+        } catch {
+          // Skip invalid data URLs for file attachment.
+        }
+      }
+      for (let i = 0; i < generatedMockups.length; i += 1) {
+        const mockup = generatedMockups[i];
+        try {
+          const blob = await dataUrlToBlob(mockup.dataUrl);
+          const safeName = mockup.fileName || `mockup-${i + 1}.png`;
+          forminitPayload.append("fi-file-mockups", new File([blob], safeName, { type: blob.type || "image/png" }));
+        } catch {
+          // Skip invalid data URLs for mockup attachment.
+        }
+      }
 
-      const result = await response.json().catch(() => null);
+      const response = await submitToForminit(forminitPayload);
       if (!response.ok) {
-        const fallback = lang === "da" ? "Kunne ikke sende forespørgslen. Prøv igen." : "Could not send request. Please try again.";
-        throw new Error(result?.error || fallback);
+        throw new Error(lang === "da" ? "Kunne ikke sende forespørgslen. Prøv igen." : "Could not send request. Please try again.");
       }
 
       setSubmitted(true);
@@ -1205,29 +1278,30 @@ const DesignUpload = () => {
                       </div>
                     )}
                   </div>
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                  <form onSubmit={handleSubmit} action={FORMINIT_ACTION_URL} method="POST" className="space-y-4">
                     <FormField
                       label={t("designPage.name")}
-                      name="name"
+                      name="fi-sender-fullName"
                       value={formInputs.name}
                       onChange={(value) => setFormInputs((prev) => ({ ...prev, name: value }))}
                       required
                     />
                     <FormField
                       label={t("designPage.company")}
-                      name="company"
+                      name="fi-text-company"
                       value={formInputs.company}
                       onChange={(value) => setFormInputs((prev) => ({ ...prev, company: value }))}
                     />
                     <FormField
                       label={t("designPage.address")}
-                      name="address"
+                      name="fi-text-address"
                       value={formInputs.address}
                       onChange={(value) => setFormInputs((prev) => ({ ...prev, address: value }))}
+                      required
                     />
                     <FormField
                       label={t("designPage.email")}
-                      name="email"
+                      name="fi-sender-email"
                       type="email"
                       value={formInputs.email}
                       onChange={(value) => setFormInputs((prev) => ({ ...prev, email: value }))}
@@ -1235,16 +1309,17 @@ const DesignUpload = () => {
                     />
                     <FormField
                       label={t("designPage.phone")}
-                      name="phone"
+                      name="fi-sender-phone"
                       type="tel"
                       value={formInputs.phone}
                       onChange={(value) => setFormInputs((prev) => ({ ...prev, phone: value }))}
+                      required
                     />
 
                     <div>
                       <label className="block text-sm font-medium mb-1.5">{t("designPage.notes")}</label>
                       <textarea
-                        name="notes"
+                        name="fi-text-notes"
                         rows={4}
                         value={formInputs.notes}
                         onChange={(e) => setFormInputs((prev) => ({ ...prev, notes: e.target.value }))}
@@ -1255,9 +1330,9 @@ const DesignUpload = () => {
                       lang={lang}
                       productName={selectedProductOption[lang]}
                     />
-                    <input type="hidden" name="product" value={selectedProduct} />
-                    <input type="hidden" name="color" value={selectedColorData?.[lang] ?? selectedColor} />
-                    <input type="hidden" name="sizeBreakdown" value={serializeSizeBreakdown(sizeQuantities)} />
+                    <input type="hidden" name="fi-text-product" value={selectedProduct} />
+                    <input type="hidden" name="fi-text-color" value={selectedColorData?.[lang] ?? selectedColor} />
+                    <input type="hidden" name="fi-text-sizeBreakdown" value={serializeSizeBreakdown(sizeQuantities)} />
 
                     {isFormStep && currentPriceCard}
 
@@ -1777,21 +1852,9 @@ const loadImage = (src: string) =>
     img.src = src;
   });
 
-const drawContainImage = (
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  x: number,
-  y: number,
-  width: number,
-  height: number
-) => {
-  const scale = Math.min(width / img.width, height / img.height);
-  const drawWidth = img.width * scale;
-  const drawHeight = img.height * scale;
-  const drawX = x + (width - drawWidth) / 2;
-  const drawY = y + (height - drawHeight) / 2;
-  ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-  return { drawX, drawY, drawWidth, drawHeight };
+const dataUrlToBlob = async (dataUrl: string) => {
+  const response = await fetch(dataUrl);
+  return response.blob();
 };
 
 const drawPlacementMockup = async (
@@ -1827,24 +1890,22 @@ const drawPlacementMockup = async (
   const areaY = (area.top / 100) * canvas.height;
   const areaW = (area.width / 100) * canvas.width;
   const areaH = (area.height / 100) * canvas.height;
-  const baseLogoWidthCm = 45 * (area.width / 58);
 
   for (const design of uploaded) {
     if (!design.file) continue;
     const logoImg = await loadImage(design.file);
-    const visualScale = getVisualScale(design.scale, baseLogoWidthCm, entry.selectedProduct, placementId);
     const offsetX =
       typeof design.posPct?.x === "number" ? design.posPct.x * areaW : design.pos.x;
     const offsetY =
       typeof design.posPct?.y === "number" ? design.posPct.y * areaH : design.pos.y;
-
-    ctx.save();
+    const logoAspect = logoImg.width / Math.max(1, logoImg.height);
+    const targetWidthPx = Math.max(1, design.scale * areaW);
+    const targetHeightPx = targetWidthPx / Math.max(0.0001, logoAspect);
     const centerX = areaX + areaW / 2 + offsetX;
     const centerY = areaY + areaH / 2 + offsetY;
-    ctx.translate(centerX, centerY);
-    ctx.scale(visualScale, visualScale);
-    drawContainImage(ctx, logoImg, -areaW / 2, -areaH / 2, areaW, areaH);
-    ctx.restore();
+    const drawX = centerX - targetWidthPx / 2;
+    const drawY = centerY - targetHeightPx / 2;
+    ctx.drawImage(logoImg, drawX, drawY, targetWidthPx, targetHeightPx);
   }
 
   return canvas.toDataURL("image/jpeg", 0.82);
