@@ -796,7 +796,13 @@ const DesignUpload = () => {
       designs,
       updatedAt: Date.now(),
     };
-    const generatedMockups = await buildMockupsForEntry(entryBase, lang);
+    let generatedMockups: QuoteMockupPayload[] = [];
+    try {
+      generatedMockups = await buildMockupsForEntry(entryBase, lang);
+    } catch {
+      // Never block adding to cart if mockup rendering fails.
+      generatedMockups = [];
+    }
     const previewMockupDataUrl = generatedMockups[0]?.dataUrl;
     const entry: CartDesignEntry = {
       ...entryBase,
