@@ -24,7 +24,7 @@ export const submitToForminit = async (payload: FormData) => {
       return {
         ok: false,
         status: 400,
-        json: async () => ({ error }),
+        json: async () => ({ error: error.message || "Forminit submit failed" }),
       } as Response;
     }
     return {

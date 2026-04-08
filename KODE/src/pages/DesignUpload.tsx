@@ -1076,8 +1076,15 @@ const DesignUpload = () => {
           2
         )
       );
-      for (let i = 0; i < quoteFiles.length; i += 1) {
-        const file = quoteFiles[i];
+
+      // Attach only unique uploaded logo files to keep payload size manageable.
+      const uniqueQuoteFiles = quoteFiles.filter((file, index, all) => {
+        const key = `${file.fileName}::${file.dataUrl.slice(0, 120)}`;
+        return all.findIndex((other) => `${other.fileName}::${other.dataUrl.slice(0, 120)}` === key) === index;
+      });
+
+      for (let i = 0; i < uniqueQuoteFiles.length; i += 1) {
+        const file = uniqueQuoteFiles[i];
         try {
           const blob = await dataUrlToBlob(file.dataUrl);
           const safeName = file.fileName || `design-${i + 1}.png`;
@@ -1086,20 +1093,15 @@ const DesignUpload = () => {
           // Skip invalid data URLs for file attachment.
         }
       }
-      for (let i = 0; i < generatedMockups.length; i += 1) {
-        const mockup = generatedMockups[i];
-        try {
-          const blob = await dataUrlToBlob(mockup.dataUrl);
-          const safeName = mockup.fileName || `mockup-${i + 1}.png`;
-          forminitPayload.append("fi-file-mockups", new File([blob], safeName, { type: blob.type || "image/png" }));
-        } catch {
-          // Skip invalid data URLs for mockup attachment.
-        }
-      }
 
       const response = await submitToForminit(forminitPayload);
       if (!response.ok) {
-        throw new Error(lang === "da" ? "Kunne ikke sende forespørgslen. Prøv igen." : "Could not send request. Please try again.");
+        const result = await response.json().catch(() => null);
+        const message =
+          result?.error?.message ||
+          result?.error ||
+          (lang === "da" ? "Kunne ikke sende forespørgslen. Prøv igen." : "Could not send request. Please try again.");
+        throw new Error(message);
       }
 
       setSubmitted(true);
