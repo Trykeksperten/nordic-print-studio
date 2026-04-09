@@ -69,10 +69,14 @@ const Index = () => {
                     to="/tekstiltryk/produkter"
                     className="group rounded-2xl border border-border bg-background/90 p-4 text-left transition hover:border-primary/40 hover:bg-primary/5"
                   >
-                    <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <img src={apparelButtonLogoSrc} alt="" className="h-5 w-5 object-contain" draggable={false} />
+                    <div className="mb-3 inline-flex h-14 items-center justify-start">
+                      <img
+                        src={apparelButtonLogoSrc}
+                        alt={isDa ? "Tøj" : "Apparel"}
+                        className="h-12 w-auto object-contain"
+                        draggable={false}
+                      />
                     </div>
-                    <div className="text-lg font-semibold">{isDa ? "Tøj" : "Apparel"}</div>
                     <p className="text-sm text-muted-foreground">
                       {isDa ? "T-shirts, hoodies og firmatøj" : "T-shirts, hoodies and workwear"}
                     </p>
@@ -81,10 +85,14 @@ const Index = () => {
                     to="/storformatprint"
                     className="group rounded-2xl border border-border bg-background/90 p-4 text-left transition hover:border-primary/40 hover:bg-primary/5"
                   >
-                    <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <img src={printButtonLogoSrc} alt="" className="h-5 w-5 object-contain" draggable={false} />
+                    <div className="mb-3 inline-flex h-14 items-center justify-start">
+                      <img
+                        src={printButtonLogoSrc}
+                        alt="Print"
+                        className="h-12 w-auto object-contain"
+                        draggable={false}
+                      />
                     </div>
-                    <div className="text-lg font-semibold">{isDa ? "Print" : "Print"}</div>
                     <p className="text-sm text-muted-foreground">
                       {isDa ? "Bannere, skilte og plakater" : "Banners, signs and posters"}
                     </p>
