@@ -67,13 +67,13 @@ const Index = () => {
                 <div className="grid w-full max-w-2xl grid-cols-1 sm:grid-cols-2 gap-3">
                   <Link
                     to="/tekstiltryk/produkter"
-                    className="group rounded-2xl border border-border bg-background/90 p-4 text-left transition hover:border-primary/40 hover:bg-primary/5"
+                    className="group rounded-2xl border border-border bg-background/90 p-4 text-center transition hover:border-primary/40 hover:bg-primary/5"
                   >
-                    <div className="mb-3 inline-flex h-14 items-center justify-start">
+                    <div className="mb-3 inline-flex h-16 w-full items-center justify-center">
                       <img
                         src={apparelButtonLogoSrc}
                         alt={isDa ? "Tøj" : "Apparel"}
-                        className="h-12 w-auto object-contain"
+                        className="h-14 w-auto object-contain"
                         draggable={false}
                       />
                     </div>
@@ -83,13 +83,13 @@ const Index = () => {
                   </Link>
                   <Link
                     to="/storformatprint"
-                    className="group rounded-2xl border border-border bg-background/90 p-4 text-left transition hover:border-primary/40 hover:bg-primary/5"
+                    className="group rounded-2xl border border-border bg-background/90 p-4 text-center transition hover:border-primary/40 hover:bg-primary/5"
                   >
-                    <div className="mb-3 inline-flex h-14 items-center justify-start">
+                    <div className="mb-3 inline-flex h-16 w-full items-center justify-center">
                       <img
                         src={printButtonLogoSrc}
                         alt="Print"
-                        className="h-12 w-auto object-contain"
+                        className="h-14 w-auto object-contain"
                         draggable={false}
                       />
                     </div>
