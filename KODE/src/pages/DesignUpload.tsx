@@ -1281,6 +1281,11 @@ const DesignUpload = () => {
         "fi-text-mockups",
         JSON.stringify(
           generatedMockups.map((mockup) => ({
+            cartItemId: mockup.cartItemId,
+            productId: mockup.productId,
+            productName: mockup.productName,
+            colorValue: mockup.colorValue,
+            colorName: mockup.colorName,
             fileName: mockup.fileName,
             placementId: mockup.placementId,
             placementLabel: mockup.placementLabel,
@@ -1289,6 +1294,7 @@ const DesignUpload = () => {
           2
         )
       );
+      forminitPayload.set("fi-text-mockup-count", String(generatedMockups.length));
 
       // Attach only unique uploaded logo files to keep payload size manageable.
       const uniqueQuoteFiles = quoteFiles.filter((file, index, all) => {
@@ -1308,17 +1314,17 @@ const DesignUpload = () => {
       }
 
       // Attach all generated mockups as files.
-      const uniqueMockups = generatedMockups.filter((mockup, index, all) => {
-        const key = `${mockup.cartItemId}::${mockup.placementId}::${mockup.fileName}`;
-        return all.findIndex((other) => `${other.cartItemId}::${other.placementId}::${other.fileName}` === key) === index;
-      });
-
-      for (let i = 0; i < uniqueMockups.length; i += 1) {
-        const mockup = uniqueMockups[i];
+      for (let i = 0; i < generatedMockups.length; i += 1) {
+        const mockup = generatedMockups[i];
         try {
           const blob = await dataUrlToBlob(mockup.dataUrl);
-          const safeName = mockup.fileName || `mockup-${i + 1}.jpg`;
-          forminitPayload.append("fi-file-mockups", new File([blob], safeName, { type: blob.type || "image/jpeg" }));
+          const fallbackName = `mockup-${i + 1}.jpg`;
+          const safeName = mockup.fileName || fallbackName;
+          const file = new File([blob], safeName, { type: blob.type || "image/jpeg" });
+          forminitPayload.append("fi-file-mockups", file);
+          // Some form providers keep only one file per field name.
+          // Also send each mockup on a unique field key to guarantee all attachments arrive.
+          forminitPayload.append(`fi-file-mockups-${i + 1}`, file);
         } catch {
           // Skip invalid mockup data URLs for file attachment.
         }
@@ -2385,6 +2391,7 @@ const buildMockupsForEntry = async (
 ): Promise<QuoteMockupPayload[]> => {
   const placements = getUsedPlacements(entry.designs);
   const results: QuoteMockupPayload[] = [];
+  const safeCartItem = entry.id.replace(/[^a-z0-9-]/gi, "-").slice(0, 24) || "item";
 
   for (const placementId of placements) {
     try {
@@ -2402,7 +2409,7 @@ const buildMockupsForEntry = async (
         colorName: entry.selectedColorName,
         placementId,
         placementLabel,
-        fileName: `mockup-${safeProduct}-${safeColor}-${safePlacement}.png`,
+        fileName: `mockup-${safeCartItem}-${safeProduct}-${safeColor}-${safePlacement}.png`,
         dataUrl,
       });
     } catch {
