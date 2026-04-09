@@ -67,8 +67,8 @@ const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border overflow-visible">
-      <div className="container mx-auto min-h-28 md:min-h-32 px-4 lg:px-8 py-3">
-        <div className="hidden lg:grid min-h-[100px] md:min-h-[116px] grid-cols-[1fr_auto_1fr] items-center gap-6">
+      <div className="container mx-auto min-h-20 md:min-h-24 px-4 lg:px-8 py-1.5">
+        <div className="hidden lg:grid min-h-[72px] md:min-h-[84px] grid-cols-[1fr_auto_1fr] items-center gap-6">
           <nav className="justify-self-start flex items-center gap-2">
             {navItems.map((item) => (
               <Link
@@ -105,7 +105,7 @@ const Header = () => {
           </div>
         </div>
 
-        <div className="lg:hidden flex min-h-[72px] items-center justify-between">
+        <div className="lg:hidden flex min-h-[56px] items-center justify-between">
           <Link to="/" className="inline-flex items-center px-2 py-1">
             <img
               src={logoSrc}
