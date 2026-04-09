@@ -134,7 +134,7 @@ const drawPlacementMockup = async (entry: CartDesignEntry, placementId: string):
   const area = defaultPrintAreas[placementId];
   if (!area) return null;
   const placementDesigns = entry.designs[placementId] ?? [];
-  const uploaded = placementDesigns.filter((d) => Boolean(d.file));
+  const uploaded = placementDesigns.filter((d) => Boolean(d.uploadFile || d.file));
   if (uploaded.length === 0) return null;
 
   const { src, transform } = getMockupSourceAndTransform(entry.selectedProduct, entry.selectedColor, placementId);
@@ -163,7 +163,7 @@ const drawPlacementMockup = async (entry: CartDesignEntry, placementId: string):
 
   for (const design of uploaded) {
     const resolvedUpload = await resolveUploadRefToDataUrl(design.uploadFile || null);
-    const imageSource = design.file || resolvedUpload;
+    const imageSource = resolvedUpload || design.file;
     if (!imageSource) continue;
     const logoImg = await loadImage(imageSource);
     const offsetX =
