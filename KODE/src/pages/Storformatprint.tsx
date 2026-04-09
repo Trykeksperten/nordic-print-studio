@@ -14,11 +14,12 @@ const fadeUp = {
 
 const Storformatprint = () => {
   const { t, lang } = useLanguage();
+  const withBase = (fileName: string) => `${import.meta.env.BASE_URL}${fileName}`;
 
   const items = [
     {
       id: "banner",
-      image: "/print-facadebanner.png",
+      image: withBase("print-facadebanner.png"),
       da: {
         title: "Bannere",
         desc: "Holdbare bannere til indendørs og udendørs brug i alle størrelser.",
@@ -30,7 +31,7 @@ const Storformatprint = () => {
     },
     {
       id: "rollup",
-      image: "/print-rollup2.png",
+      image: withBase("print-rollup2.png"),
       da: {
         title: "Roll-ups",
         desc: "Portable roll-up displays til messer og events. Let at transportere.",
@@ -42,7 +43,7 @@ const Storformatprint = () => {
     },
     {
       id: "poster",
-      image: "/print-plakat.png",
+      image: withBase("print-plakat.png"),
       da: {
         title: "Plakater",
         desc: "Højtopløselige plakater i alle størrelser med skarpe farver.",
@@ -54,7 +55,7 @@ const Storformatprint = () => {
     },
     {
       id: "sign",
-      image: "/print-banner.svg",
+      image: withBase("print-banner.svg"),
       da: {
         title: "Skilte",
         desc: "Professionelle skilte til din virksomhed i forskellige materialer.",
@@ -66,7 +67,7 @@ const Storformatprint = () => {
     },
     {
       id: "trade-show",
-      image: "/print-tradeshow.svg",
+      image: withBase("print-tradeshow.svg"),
       da: {
         title: "Messemateriale",
         desc: "Alt til din næste messe eller event - fra bannere til displays.",
