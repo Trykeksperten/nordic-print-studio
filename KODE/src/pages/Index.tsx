@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, MapPin, Printer, Shirt, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,21 @@ const fadeUp = {
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true },
   transition: { duration: 0.5, ease: [0.32, 0.72, 0, 1] as const },
+};
+
+const designChoicesContainer = {
+  hidden: { opacity: 0, y: -10 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: [0.32, 0.72, 0, 1] as const, when: "beforeChildren", staggerChildren: 0.08 },
+  },
+  exit: { opacity: 0, y: -8, transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] as const } },
+};
+
+const designChoiceItem = {
+  hidden: { opacity: 0, y: 12, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.28, ease: [0.32, 0.72, 0, 1] as const } },
 };
 
 const Index = () => {
@@ -63,42 +78,55 @@ const Index = () => {
                 {isDa ? "Start design" : "Start design"}
               </Button>
 
-              {showDesignChoices && (
-                <div className="grid w-full max-w-2xl grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Link
-                    to="/tekstiltryk/produkter"
-                    className="group rounded-2xl border border-border bg-background/90 p-4 text-center transition hover:border-primary/40 hover:bg-primary/5"
+              <AnimatePresence initial={false}>
+                {showDesignChoices && (
+                  <motion.div
+                    className="grid w-full max-w-2xl grid-cols-1 sm:grid-cols-2 gap-3"
+                    variants={designChoicesContainer}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
                   >
-                    <div className="mb-3 inline-flex h-16 w-full items-center justify-center">
-                      <img
-                        src={apparelButtonLogoSrc}
-                        alt={isDa ? "Tøj" : "Apparel"}
-                        className="h-14 w-auto object-contain"
-                        draggable={false}
-                      />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {isDa ? "T-shirts, hoodies og firmatøj" : "T-shirts, hoodies and workwear"}
-                    </p>
-                  </Link>
-                  <Link
-                    to="/storformatprint"
-                    className="group rounded-2xl border border-border bg-background/90 p-4 text-center transition hover:border-primary/40 hover:bg-primary/5"
-                  >
-                    <div className="mb-3 inline-flex h-16 w-full items-center justify-center">
-                      <img
-                        src={printButtonLogoSrc}
-                        alt="Print"
-                        className="h-14 w-auto object-contain"
-                        draggable={false}
-                      />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {isDa ? "Bannere, skilte og plakater" : "Banners, signs and posters"}
-                    </p>
-                  </Link>
-                </div>
-              )}
+                    <motion.div variants={designChoiceItem}>
+                      <Link
+                        to="/tekstiltryk/produkter"
+                        className="group block rounded-2xl border border-border bg-background/90 p-4 text-center transition hover:border-primary/40 hover:bg-primary/5"
+                      >
+                        <div className="mb-3 inline-flex h-16 w-full items-center justify-center">
+                          <img
+                            src={apparelButtonLogoSrc}
+                            alt={isDa ? "Tøj" : "Apparel"}
+                            className="h-14 w-auto object-contain"
+                            draggable={false}
+                          />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {isDa ? "T-shirts, hoodies og firmatøj" : "T-shirts, hoodies and workwear"}
+                        </p>
+                      </Link>
+                    </motion.div>
+
+                    <motion.div variants={designChoiceItem}>
+                      <Link
+                        to="/storformatprint"
+                        className="group block rounded-2xl border border-border bg-background/90 p-4 text-center transition hover:border-primary/40 hover:bg-primary/5"
+                      >
+                        <div className="mb-3 inline-flex h-16 w-full items-center justify-center">
+                          <img
+                            src={printButtonLogoSrc}
+                            alt="Print"
+                            className="h-14 w-auto object-contain"
+                            draggable={false}
+                          />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {isDa ? "Bannere, skilte og plakater" : "Banners, signs and posters"}
+                        </p>
+                      </Link>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         </div>
