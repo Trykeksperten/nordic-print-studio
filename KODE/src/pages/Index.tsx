@@ -16,6 +16,8 @@ const fadeUp = {
 const Index = () => {
   const { lang } = useLanguage();
   const isDa = lang === "da";
+  const apparelButtonLogoSrc = `${import.meta.env.BASE_URL}knapper/toj-knap.png`;
+  const printButtonLogoSrc = `${import.meta.env.BASE_URL}knapper/print-knap.png`;
   const [showDesignChoices, setShowDesignChoices] = useState(false);
 
   useEffect(() => {
@@ -68,7 +70,7 @@ const Index = () => {
                     className="group rounded-2xl border border-border bg-background/90 p-4 text-left transition hover:border-primary/40 hover:bg-primary/5"
                   >
                     <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <Shirt size={18} />
+                      <img src={apparelButtonLogoSrc} alt="" className="h-5 w-5 object-contain" draggable={false} />
                     </div>
                     <div className="text-lg font-semibold">{isDa ? "Tøj" : "Apparel"}</div>
                     <p className="text-sm text-muted-foreground">
@@ -80,7 +82,7 @@ const Index = () => {
                     className="group rounded-2xl border border-border bg-background/90 p-4 text-left transition hover:border-primary/40 hover:bg-primary/5"
                   >
                     <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <Printer size={18} />
+                      <img src={printButtonLogoSrc} alt="" className="h-5 w-5 object-contain" draggable={false} />
                     </div>
                     <div className="text-lg font-semibold">{isDa ? "Print" : "Print"}</div>
                     <p className="text-sm text-muted-foreground">
