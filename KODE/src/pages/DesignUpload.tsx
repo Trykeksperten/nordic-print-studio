@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { motion } from "framer-motion";
 import Layout from "@/components/Layout";
-import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { toast } from "sonner";
 import PlacementStep, {
+  type LogoBankAsset,
   type PlacementDesign,
   defaultPrintAreas,
   emptyDesign,
@@ -24,7 +25,6 @@ import {
 import { autoBybLadiesFluffySweatpantsColorMockups } from "@/lib/autoFolderProductVariants";
 import { FORMINIT_ACTION_URL, submitToForminit } from "@/lib/forminit";
 import {
-  isDataUrl,
   prepareDesignMapForCartStorage,
   resolveUploadRefToDataUrl,
 } from "@/lib/uploadRefs";
@@ -121,6 +121,7 @@ type QuoteFormInputs = {
   name: string;
   company: string;
   address: string;
+  postCode: string;
   email: string;
   phone: string;
   notes: string;
@@ -131,8 +132,10 @@ type PersistedDesignUploadState = {
   hasEnteredDesign: boolean;
   selectedProduct: string;
   sizeQuantities: Record<string, number>;
+  quantityDraftsByVariant?: Record<string, Record<string, number>>;
   selectedColor: string;
   designs: Record<string, PlacementDesign[]>;
+  logoBankAssets?: LogoBankAsset[];
   formInputs: QuoteFormInputs;
 };
 
@@ -173,8 +176,9 @@ const defaultFormInputs: QuoteFormInputs = {
   name: "",
   company: "",
   address: "",
+  postCode: "",
   email: "",
-  phone: "",
+  phone: "+45 ",
   notes: "",
 };
 
@@ -334,6 +338,17 @@ const DesignUpload = () => {
     ? (persistedProduct as string)
     : "basic-tshirt";
   const defaultSizes = productOptions.find((p) => p.value === defaultProduct)?.sizes ?? ["S", "M", "L"];
+  const defaultColors = getProductColors(defaultProduct);
+  const defaultColor =
+    (persistedState?.selectedColor && defaultColors.some((color) => color.value === persistedState.selectedColor)
+      ? persistedState.selectedColor
+      : defaultColors.find((color) => color.value === "black")?.value) ??
+    defaultColors[0]?.value ??
+    "black";
+  const initialQuantityDraftsByVariant = useMemo(
+    () => sanitizeQuantityDraftsByVariant(persistedState?.quantityDraftsByVariant),
+    [persistedState]
+  );
 
   const [currentStep, setCurrentStep] = useState(
     clampStepIndex(persistedState?.currentStep ?? 0, steps.length)
@@ -342,15 +357,27 @@ const DesignUpload = () => {
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(defaultProduct);
-  const [sizeQuantities, setSizeQuantities] = useState<Record<string, number>>(() => ({
-    ...createSizeQuantityMap(defaultSizes),
-    ...(persistedState?.sizeQuantities ?? {}),
-  }));
-  const [selectedColor, setSelectedColor] = useState(() => {
-    if (persistedState?.selectedColor) return persistedState.selectedColor;
-    const colors = getProductColors(defaultProduct);
-    return colors.find((color) => color.value === "black")?.value ?? colors[0]?.value ?? "black";
+  const [selectedColor, setSelectedColor] = useState(defaultColor);
+  const [quantityDraftsByVariant, setQuantityDraftsByVariant] = useState<Record<string, Record<string, number>>>(() => {
+    const migrated = { ...initialQuantityDraftsByVariant };
+    const legacyQuantities = sanitizeSizeQuantitiesRecord(persistedState?.sizeQuantities);
+    const legacyHasValues = Object.values(legacyQuantities).some((value) => value > 0);
+    const legacyKey = createVariantQuantityKey(
+      persistedState?.selectedProduct || defaultProduct,
+      persistedState?.selectedColor || defaultColor
+    );
+    if (legacyHasValues && !migrated[legacyKey]) {
+      migrated[legacyKey] = legacyQuantities;
+    }
+    return migrated;
   });
+  const [sizeQuantities, setSizeQuantities] = useState<Record<string, number>>(() =>
+    buildSizeQuantities(
+      defaultSizes,
+      initialQuantityDraftsByVariant[createVariantQuantityKey(defaultProduct, defaultColor)] ||
+        sanitizeSizeQuantitiesRecord(persistedState?.sizeQuantities)
+    )
+  );
   const [designs, setDesigns] = useState<Record<string, PlacementDesign[]>>(() => {
     const persistedDesigns = sanitizePersistedDesigns(persistedState?.designs);
     if (persistedDesigns) return persistedDesigns;
@@ -358,6 +385,9 @@ const DesignUpload = () => {
     steps.forEach((s) => { init[s.id] = [emptyDesign()]; });
     return init;
   });
+  const [logoBankAssets, setLogoBankAssets] = useState<LogoBankAsset[]>(
+    () => sanitizePersistedLogoBankAssets(persistedState?.logoBankAssets)
+  );
   const [formInputs, setFormInputs] = useState<QuoteFormInputs>(
     persistedState?.formInputs ?? defaultFormInputs
   );
@@ -370,6 +400,11 @@ const DesignUpload = () => {
     designIndex: number;
     nonce: number;
   } | null>(null);
+  const [selectedActiveLogoKey, setSelectedActiveLogoKey] = useState<string | null>(null);
+  const [addressSuggestions, setAddressSuggestions] = useState<Array<{ id: string; label: string; postCode: string }>>([]);
+  const [addressLookupLoading, setAddressLookupLoading] = useState(false);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const addressLookupAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (requestedProduct) {
@@ -392,12 +427,20 @@ const DesignUpload = () => {
     if (!sanitized) return;
     setSelectedProduct(entry.selectedProduct);
     setSelectedColor(entry.selectedColor);
-    setSizeQuantities(entry.sizeQuantities);
+    const safeQuantities = sanitizeSizeQuantitiesRecord(entry.sizeQuantities);
+    setQuantityDraftsByVariant((prev) => ({
+      ...prev,
+      [createVariantQuantityKey(entry.selectedProduct, entry.selectedColor)]: safeQuantities,
+    }));
+    setSizeQuantities(buildSizeQuantities(
+      productOptions.find((p) => p.value === entry.selectedProduct)?.sizes ?? defaultSizes,
+      safeQuantities
+    ));
     setDesigns(sanitized);
     setHasEnteredDesign(true);
     setCurrentStep(0);
     window.scrollTo({ top: 0, behavior: "auto" });
-  }, [requestedCartItem, designCart]);
+  }, [requestedCartItem, designCart, defaultSizes]);
 
   const totalSteps = steps.length;
   const isFormStep = hasEnteredDesign && currentStep >= totalSteps;
@@ -414,6 +457,10 @@ const DesignUpload = () => {
   const selectedColorData = useMemo(
     () => availableColors.find((color) => color.value === selectedColor) ?? availableColors[0],
     [availableColors, selectedColor]
+  );
+  const currentVariantQuantityKey = useMemo(
+    () => createVariantQuantityKey(selectedProduct, selectedColor),
+    [selectedProduct, selectedColor]
   );
   const canStartDesign = Boolean(selectedColorData?.value) && quantity > 0;
   const hasReusableCartDesign = useMemo(
@@ -436,14 +483,20 @@ const DesignUpload = () => {
   }, [availableColors, selectedColor]);
 
   useEffect(() => {
+    return () => {
+      addressLookupAbortRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
     setSizeQuantities((prev) => {
-      const next = createSizeQuantityMap(selectedProductOption.sizes);
-      selectedProductOption.sizes.forEach((size) => {
-        if (size in prev) next[size] = prev[size];
-      });
-      return next;
+      const next = buildSizeQuantities(
+        selectedProductOption.sizes,
+        quantityDraftsByVariant[currentVariantQuantityKey]
+      );
+      return areSizeQuantitiesEqual(prev, next) ? prev : next;
     });
-  }, [selectedProductOption.sizes]);
+  }, [currentVariantQuantityKey, quantityDraftsByVariant, selectedProductOption.sizes]);
 
   useEffect(() => {
     try {
@@ -452,21 +505,72 @@ const DesignUpload = () => {
         hasEnteredDesign,
         selectedProduct,
         sizeQuantities,
+        quantityDraftsByVariant,
         selectedColor,
         designs,
+        logoBankAssets,
         formInputs,
       };
       localStorage.setItem(DESIGN_UPLOAD_STORAGE_KEY, JSON.stringify(payload));
     } catch {
       // Ignore storage quota/access errors.
     }
-  }, [currentStep, hasEnteredDesign, selectedProduct, sizeQuantities, selectedColor, designs, formInputs]);
+  }, [currentStep, hasEnteredDesign, selectedProduct, sizeQuantities, quantityDraftsByVariant, selectedColor, designs, logoBankAssets, formInputs]);
+
+  useEffect(() => {
+    const query = formInputs.address.trim();
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      setAddressLookupLoading(false);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      addressLookupAbortRef.current?.abort();
+      const controller = new AbortController();
+      addressLookupAbortRef.current = controller;
+      setAddressLookupLoading(true);
+      try {
+        const endpoint = `https://api.dataforsyningen.dk/adresser/autocomplete?q=${encodeURIComponent(query)}`;
+        const response = await fetch(endpoint, { signal: controller.signal });
+        if (!response.ok) throw new Error("Address lookup failed");
+        const payload = await response.json();
+        const next = parseAddressSuggestions(payload).slice(0, 8);
+        setAddressSuggestions(next);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setAddressSuggestions([]);
+      } finally {
+        setAddressLookupLoading(false);
+      }
+    }, 220);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [formInputs.address]);
 
   // Count total uploaded designs across all placements
-  const allActiveDesigns: { placementId: string; design: PlacementDesign }[] = [];
-  Object.entries(designs).forEach(([id, list]) => {
-    list.forEach((d) => { if (d.file) allActiveDesigns.push({ placementId: id, design: d }); });
-  });
+  const allActiveDesigns = useMemo(() => {
+    const collected: { placementId: string; designIndex: number; design: PlacementDesign; key: string }[] = [];
+    Object.entries(designs).forEach(([id, list]) => {
+      list.forEach((d, index) => {
+        if (!d.file) return;
+        collected.push({
+          placementId: id,
+          designIndex: index,
+          design: d,
+          key: `${id}:${index}:${d.fileName || "uploaded-design"}`,
+        });
+      });
+    });
+    return collected;
+  }, [designs]);
+  const currentPlacementId = steps[currentStep]?.id ?? steps[0].id;
+  const currentPlacementActiveDesigns = useMemo(
+    () => allActiveDesigns.filter((entry) => entry.placementId === currentPlacementId),
+    [allActiveDesigns, currentPlacementId]
+  );
 
   const activeStepLabels = useMemo(
     () => (isBottomwearProduct(selectedProduct) ? bottomStepLabels : stepLabels),
@@ -479,9 +583,6 @@ const DesignUpload = () => {
   const isEditingExistingCartItem = useMemo(
     () => Boolean(requestedCartItem && designCart.some((item) => item.id === requestedCartItem)),
     [requestedCartItem, designCart]
-  );
-  const placementLabelsResolved = Object.fromEntries(
-    Object.entries(activeStepLabels).map(([k, v]) => [k, v[lang]])
   );
   const livePrice = useMemo(() => calculateTotal(designs, quantity), [designs, quantity]);
   const baseUnitPrice = useMemo(
@@ -541,13 +642,21 @@ const DesignUpload = () => {
     if (sanitized) {
       setSelectedProduct(latest.selectedProduct);
       setSelectedColor(latest.selectedColor);
-      setSizeQuantities(latest.sizeQuantities);
+      const safeQuantities = sanitizeSizeQuantitiesRecord(latest.sizeQuantities);
+      setQuantityDraftsByVariant((prev) => ({
+        ...prev,
+        [createVariantQuantityKey(latest.selectedProduct, latest.selectedColor)]: safeQuantities,
+      }));
+      setSizeQuantities(buildSizeQuantities(
+        productOptions.find((p) => p.value === latest.selectedProduct)?.sizes ?? defaultSizes,
+        safeQuantities
+      ));
       setDesigns(sanitized);
     }
     setHasEnteredDesign(true);
     setCurrentStep(totalSteps);
     window.scrollTo({ top: 0, behavior: "auto" });
-  }, [requestedCheckout, designCart, totalSteps]);
+  }, [requestedCheckout, designCart, totalSteps, defaultSizes]);
   const printBreakdownLines = useMemo(() => {
     if (livePrice.details.length === 0 || quantity === 0) return [];
 
@@ -680,62 +789,119 @@ const DesignUpload = () => {
     setDesigns((prev) => ({ ...prev, [id]: newDesigns }));
   };
 
-  const handleReuseUploadedDesign = (sourceDesign: PlacementDesign) => {
-    if (!sourceDesign.file) return;
-    const targetPlacementId = steps[currentStep]?.id;
-    if (!targetPlacementId) return;
-
-    setDesigns((prev) => {
-      const existing = prev[targetPlacementId] ?? [emptyDesign()];
-      const nextElement: PlacementDesign = {
-        file: sourceDesign.file,
-        uploadFile: sourceDesign.uploadFile ?? null,
-        fileName: sourceDesign.fileName,
-        pos: { x: 0, y: 0 },
-        posPct: { x: 0, y: 0 },
-        scale: sourceDesign.scale,
-        sizeCategory: sourceDesign.sizeCategory,
-      };
-
-      let nextPlacementDesigns: PlacementDesign[];
-      let insertedIndex = 0;
-      if (existing.length === 1 && !existing[0]?.file) {
-        nextPlacementDesigns = [nextElement];
-      } else {
-        nextPlacementDesigns = [...existing, nextElement];
-        insertedIndex = nextPlacementDesigns.length - 1;
-      }
-
-      setDesignFocusRequest({
-        placementId: targetPlacementId,
-        designIndex: insertedIndex,
-        nonce: Date.now(),
-      });
-
-      return {
+  const handleUploadToLogoBank = (asset: Omit<LogoBankAsset, "id">) => {
+    const dedupeKey = createLogoBankAssetKey(asset.fileName, asset.sourceUrl || asset.previewUrl);
+    setLogoBankAssets((prev) => {
+      const existing = prev.find(
+        (entry) => createLogoBankAssetKey(entry.fileName, entry.sourceUrl || entry.previewUrl) === dedupeKey
+      );
+      if (existing) return prev;
+      return [
+        {
+          id: createLogoBankAssetId(),
+          ...asset,
+        },
         ...prev,
-        [targetPlacementId]: nextPlacementDesigns,
+      ];
+    });
+  };
+
+  const handleRemoveLogoBankAsset = (assetId: string) => {
+    setLogoBankAssets((prev) => prev.filter((asset) => asset.id !== assetId));
+  };
+
+  const handleSelectActiveLogo = (placementId: string, designIndex: number) => {
+    const targetStep = steps.findIndex((step) => step.id === placementId);
+    if (targetStep < 0) return;
+    setCurrentStep(targetStep);
+    setHasEnteredDesign(true);
+    setSelectedActiveLogoKey(`${placementId}:${designIndex}`);
+    setDesignFocusRequest({
+      placementId,
+      designIndex,
+      nonce: Date.now(),
+    });
+  };
+
+  const handleRemoveActiveLogo = (placementId: string, designIndex: number) => {
+    setDesigns((prev) => {
+      const placementDesigns = prev[placementId] ?? [emptyDesign()];
+      const nextPlacementDesigns = placementDesigns.filter((_, index) => index !== designIndex);
+      const normalizedPlacementDesigns =
+        nextPlacementDesigns.length > 0 ? nextPlacementDesigns : [emptyDesign()];
+      const next = {
+        ...prev,
+        [placementId]: normalizedPlacementDesigns,
       };
+      return next;
+    });
+
+    setSelectedActiveLogoKey((prev) => (prev === `${placementId}:${designIndex}` ? null : prev));
+    setDesignFocusRequest((prev) => {
+      if (!prev || prev.placementId !== placementId) return prev;
+      const nextIndex = Math.max(0, Math.min(prev.designIndex, (designs[placementId]?.length ?? 1) - 2));
+      return { placementId, designIndex: nextIndex, nonce: Date.now() };
     });
   };
 
   const handleSizeQuantityChange = (size: string, value: number) => {
-    setSizeQuantities((prev) => ({
+    const safeValue = Math.max(0, Number.isFinite(value) ? value : 0);
+    setSizeQuantities((prev) => {
+      const next = {
+        ...prev,
+        [size]: safeValue,
+      };
+      setQuantityDraftsByVariant((drafts) => ({
+        ...drafts,
+        [currentVariantQuantityKey]: sanitizeSizeQuantitiesRecord(next),
+      }));
+      return next;
+    });
+  };
+
+  const handleSelectAddressSuggestion = (suggestion: { label: string; postCode: string }) => {
+    setFormInputs((prev) => ({
       ...prev,
-      [size]: Math.max(0, Number.isFinite(value) ? value : 0),
+      address: suggestion.label,
+      postCode: suggestion.postCode || prev.postCode,
+    }));
+    setAddressSuggestions([]);
+    setShowAddressSuggestions(false);
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setFormInputs((prev) => ({ ...prev, phone: value }));
+  };
+
+  const handlePhoneBlur = () => {
+    setFormInputs((prev) => ({
+      ...prev,
+      phone: normalizePhoneWithDefaultCountryCode(prev.phone),
     }));
   };
 
   const goToStep = (nextStep: number) => {
     setCurrentStep(nextStep);
+    setSelectedActiveLogoKey(null);
+    setDesignFocusRequest(null);
   };
 
   const handleProductChange = (nextProduct: string) => {
     if (nextProduct === selectedProduct) return;
+    const nextColors = getProductColors(nextProduct);
+    const nextColor =
+      nextColors.find((color) => color.value === "black")?.value ??
+      nextColors[0]?.value ??
+      "black";
     setSelectedProduct(nextProduct);
+    setSelectedColor(nextColor);
     setHasEnteredDesign(false);
     setCurrentStep(0);
     setDesigns(createEmptyDesignMap());
+    setSizeQuantities(buildSizeQuantities(
+      productOptions.find((p) => p.value === nextProduct)?.sizes ?? ["S", "M", "L"],
+      quantityDraftsByVariant[createVariantQuantityKey(nextProduct, nextColor)]
+    ));
 
     const params = new URLSearchParams(searchParams);
     params.set("product", nextProduct);
@@ -754,10 +920,18 @@ const DesignUpload = () => {
     if (existing) {
       const restored = sanitizePersistedDesigns(existing.designs);
       if (restored) setDesigns(restored);
-      setSizeQuantities(existing.sizeQuantities);
+      const safeQuantities = sanitizeSizeQuantitiesRecord(existing.sizeQuantities);
+      setQuantityDraftsByVariant((prev) => ({
+        ...prev,
+        [createVariantQuantityKey(selectedProduct, nextColor)]: safeQuantities,
+      }));
+      setSizeQuantities(buildSizeQuantities(selectedProductOption.sizes, safeQuantities));
     } else {
       setDesigns(createEmptyDesignMap());
-      setSizeQuantities(createSizeQuantityMap(selectedProductOption.sizes));
+      setSizeQuantities(buildSizeQuantities(
+        selectedProductOption.sizes,
+        quantityDraftsByVariant[createVariantQuantityKey(selectedProduct, nextColor)]
+      ));
     }
     setCurrentStep(0);
   };
@@ -841,8 +1015,13 @@ const DesignUpload = () => {
         ? (lang === "da" ? "Design opdateret" : "Design updated")
         : (lang === "da" ? "Tilføjet til kurv" : "Added to cart")
     );
+    const resetQuantities = buildSizeQuantities(selectedProductOption.sizes, undefined);
+    setQuantityDraftsByVariant((prev) => ({
+      ...prev,
+      [currentVariantQuantityKey]: resetQuantities,
+    }));
     setDesigns(createEmptyDesignMap());
-    setSizeQuantities(createSizeQuantityMap(selectedProductOption.sizes));
+    setSizeQuantities(resetQuantities);
     setCurrentStep(0);
   };
 
@@ -874,7 +1053,15 @@ const DesignUpload = () => {
     }
     setSelectedProduct(entry.selectedProduct);
     setSelectedColor(entry.selectedColor);
-    setSizeQuantities(entry.sizeQuantities);
+    const safeQuantities = sanitizeSizeQuantitiesRecord(entry.sizeQuantities);
+    setQuantityDraftsByVariant((prev) => ({
+      ...prev,
+      [createVariantQuantityKey(entry.selectedProduct, entry.selectedColor)]: safeQuantities,
+    }));
+    setSizeQuantities(buildSizeQuantities(
+      productOptions.find((p) => p.value === entry.selectedProduct)?.sizes ?? defaultSizes,
+      safeQuantities
+    ));
     setDesigns(sanitized);
     setHasEnteredDesign(true);
     setCurrentStep(0);
@@ -939,7 +1126,8 @@ const DesignUpload = () => {
     const formData = new FormData(e.currentTarget);
     const name = String(formData.get("fi-sender-fullName") ?? formInputs.name).trim();
     const email = String(formData.get("fi-sender-email") ?? formInputs.email).trim();
-    const phone = String(formData.get("fi-sender-phone") ?? formInputs.phone).trim();
+    const rawPhone = String(formData.get("fi-sender-phone") ?? formInputs.phone).trim();
+    const phone = normalizePhoneWithDefaultCountryCode(rawPhone);
     const company = String(formData.get("fi-text-company") ?? formInputs.company).trim();
     const address = String(formData.get("fi-text-address") ?? formInputs.address).trim();
     const notes = String(formData.get("fi-text-notes") ?? formInputs.notes).trim();
@@ -960,7 +1148,9 @@ const DesignUpload = () => {
       return;
     }
 
-    if (!phone || phone.replace(/[^\d+]/g, "").length < 8) {
+    const phoneHasCountryCode = /^\+\d{1,3}/.test(phone);
+    const phoneDigitCount = phone.replace(/[^\d]/g, "").length;
+    if (!phone || !phoneHasCountryCode || phoneDigitCount < 8) {
       toast.error(lang === "da" ? "Indtast et gyldigt telefonnummer" : "Please enter a valid phone number");
       return;
     }
@@ -1018,6 +1208,7 @@ const DesignUpload = () => {
       forminitPayload.set("fi-sender-phone", phone);
       forminitPayload.set("fi-text-company", company);
       forminitPayload.set("fi-text-address", address);
+      forminitPayload.set("fi-text-postcode", formInputs.postCode);
       forminitPayload.set("fi-text-notes", notes);
       forminitPayload.set("fi-text-message", notes || (lang === "da" ? "Ingen bemærkninger." : "No notes."));
       forminitPayload.set("fi-metadata-source", "DesignUpload checkout");
@@ -1113,6 +1304,23 @@ const DesignUpload = () => {
           forminitPayload.append("fi-file-uploadedDesigns", new File([blob], safeName, { type: blob.type || "image/png" }));
         } catch {
           // Skip invalid data URLs for file attachment.
+        }
+      }
+
+      // Attach all generated mockups as files.
+      const uniqueMockups = generatedMockups.filter((mockup, index, all) => {
+        const key = `${mockup.cartItemId}::${mockup.placementId}::${mockup.fileName}`;
+        return all.findIndex((other) => `${other.cartItemId}::${other.placementId}::${other.fileName}` === key) === index;
+      });
+
+      for (let i = 0; i < uniqueMockups.length; i += 1) {
+        const mockup = uniqueMockups[i];
+        try {
+          const blob = await dataUrlToBlob(mockup.dataUrl);
+          const safeName = mockup.fileName || `mockup-${i + 1}.jpg`;
+          forminitPayload.append("fi-file-mockups", new File([blob], safeName, { type: blob.type || "image/jpeg" }));
+        } catch {
+          // Skip invalid mockup data URLs for file attachment.
         }
       }
 
@@ -1255,6 +1463,12 @@ const DesignUpload = () => {
                   productId={selectedProduct}
                   selectedColor={selectedColorData}
                   designs={designs[steps[currentStep].id]}
+                  logoBankAssets={logoBankAssets}
+                  onUploadToLogoBank={handleUploadToLogoBank}
+                  onRemoveLogoBankAsset={handleRemoveLogoBankAsset}
+                  onActiveDesignChange={(designIndex) =>
+                    setSelectedActiveLogoKey(`${steps[currentStep].id}:${designIndex}`)
+                  }
                   showHeader={false}
                   showColorBadge={false}
                   focusRequest={
@@ -1316,13 +1530,59 @@ const DesignUpload = () => {
                       value={formInputs.company}
                       onChange={(value) => setFormInputs((prev) => ({ ...prev, company: value }))}
                     />
-                    <FormField
-                      label={t("designPage.address")}
-                      name="fi-text-address"
-                      value={formInputs.address}
-                      onChange={(value) => setFormInputs((prev) => ({ ...prev, address: value }))}
-                      required
-                    />
+                    <div className="relative">
+                      <label className="block text-sm font-medium mb-1.5">{t("designPage.address")}</label>
+                      <input
+                        type="text"
+                        name="fi-text-address"
+                        value={formInputs.address}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const typedPostCode = value.match(/\b\d{4}\b/)?.[0] || "";
+                          setFormInputs((prev) => ({
+                            ...prev,
+                            address: value,
+                            postCode: typedPostCode,
+                          }));
+                          setShowAddressSuggestions(true);
+                        }}
+                        onFocus={() => setShowAddressSuggestions(true)}
+                        onBlur={() => {
+                          window.setTimeout(() => setShowAddressSuggestions(false), 120);
+                        }}
+                        required
+                        autoComplete="street-address"
+                        className="w-full h-11 bg-card rounded-lg px-3 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 outline-none card-shadow"
+                      />
+                      {showAddressSuggestions && (addressLookupLoading || addressSuggestions.length > 0) && (
+                        <div className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-card shadow-lg max-h-64 overflow-auto">
+                          {addressLookupLoading ? (
+                            <div className="px-3 py-2 text-sm text-muted-foreground">
+                              {lang === "da" ? "Søger adresser..." : "Searching addresses..."}
+                            </div>
+                          ) : (
+                            addressSuggestions.map((suggestion) => (
+                              <button
+                                key={suggestion.id}
+                                type="button"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  handleSelectAddressSuggestion(suggestion);
+                                }}
+                              >
+                                {suggestion.label}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                      {formInputs.postCode ? (
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          {lang === "da" ? `Postnummer registreret: ${formInputs.postCode}` : `Postcode detected: ${formInputs.postCode}`}
+                        </p>
+                      ) : null}
+                    </div>
                     <FormField
                       label={t("designPage.email")}
                       name="fi-sender-email"
@@ -1336,7 +1596,15 @@ const DesignUpload = () => {
                       name="fi-sender-phone"
                       type="tel"
                       value={formInputs.phone}
-                      onChange={(value) => setFormInputs((prev) => ({ ...prev, phone: value }))}
+                      onChange={handlePhoneChange}
+                      onFocus={() => {
+                        setFormInputs((prev) =>
+                          prev.phone.trim().length === 0 ? { ...prev, phone: "+45 " } : prev
+                        );
+                      }}
+                      onBlur={handlePhoneBlur}
+                      autoComplete="tel"
+                      placeholder="+45 12 34 56 78"
                       required
                     />
 
@@ -1357,6 +1625,7 @@ const DesignUpload = () => {
                     <input type="hidden" name="fi-text-product" value={selectedProduct} />
                     <input type="hidden" name="fi-text-color" value={selectedColorData?.[lang] ?? selectedColor} />
                     <input type="hidden" name="fi-text-sizeBreakdown" value={serializeSizeBreakdown(sizeQuantities)} />
+                    <input type="hidden" name="fi-text-postcode" value={formInputs.postCode} />
 
                     {isFormStep && currentPriceCard}
 
@@ -1429,35 +1698,48 @@ const DesignUpload = () => {
                       ) : (
                         <div>
                           <label className="block text-xs font-medium mb-1.5">
-                            {lang === "da" ? "Uploadede designfiler" : "Uploaded design files"}
+                            {lang === "da" ? "Aktive logoer" : "Active logos"}
                           </label>
-                          {allActiveDesigns.length === 0 ? (
+                          {currentPlacementActiveDesigns.length === 0 ? (
                             <p className="text-sm text-muted-foreground">
                               {lang === "da"
-                                ? "Du har ikke uploadet et design endnu. Du kan fortsætte uden tryk eller uploade et logo."
-                                : "You haven't uploaded a design yet. You can continue without print or upload a logo."}
+                                ? "Klik på et logo i din logobank for at aktivere det."
+                                : "Click a logo in your logo bank to activate it."}
                             </p>
                           ) : (
                             <div className="space-y-2">
-                              {allActiveDesigns.map(({ placementId, design }, i) => {
-                                const placementDesigns = designs[placementId].filter((d) => d.file);
-                                const logoNum = placementDesigns.length > 1
-                                  ? ` – Logo ${designs[placementId].indexOf(design) + 1}`
-                                  : "";
+                              {currentPlacementActiveDesigns.map(({ placementId, designIndex, design, key }) => {
+                                const rowKey = `${placementId}:${designIndex}`;
+                                const isSelected = selectedActiveLogoKey === rowKey;
                                 return (
-                                  <button
-                                    type="button"
-                                    key={`${placementId}-${i}`}
-                                    onClick={() => handleReuseUploadedDesign(design)}
-                                    className="w-full flex items-center gap-2 p-2 bg-muted rounded-lg text-left"
+                                  <div
+                                    key={key}
+                                    className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-colors ${
+                                      isSelected ? "bg-primary/10 border border-primary/30" : "bg-muted"
+                                    }`}
                                   >
-                                    <img src={design.file!} alt="" className="w-8 h-8 object-contain rounded" />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium truncate">{placementLabelsResolved[placementId]}{logoNum}</p>
-                                      <p className="text-[11px] text-muted-foreground truncate">{design.fileName}</p>
-                                    </div>
-                                    <CheckCircle2 size={14} className="text-primary shrink-0" />
-                                  </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSelectActiveLogo(placementId, designIndex)}
+                                      className="flex flex-1 min-w-0 items-center gap-2 text-left"
+                                    >
+                                      <img src={design.file!} alt="" className="w-8 h-8 object-contain rounded" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium truncate">{design.fileName}</p>
+                                        <p className="text-[11px] text-muted-foreground">{activeStepLabels[placementId][lang]}</p>
+                                      </div>
+                                      <CheckCircle2 size={14} className="text-primary shrink-0" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveActiveLogo(placementId, designIndex)}
+                                      className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-background/70 transition-colors shrink-0"
+                                      title={lang === "da" ? "Fjern aktivt logo" : "Remove active logo"}
+                                      aria-label={lang === "da" ? "Fjern aktivt logo" : "Remove active logo"}
+                                    >
+                                      <X size={16} />
+                                    </button>
+                                  </div>
                                 );
                               })}
                             </div>
@@ -1533,14 +1815,22 @@ const FormField = ({
   name,
   value,
   onChange,
+  onFocus,
+  onBlur,
   type = "text",
+  autoComplete,
+  placeholder,
   required = false,
 }: {
   label: string;
   name: string;
   value: string;
   onChange: (value: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
   type?: string;
+  autoComplete?: string;
+  placeholder?: string;
   required?: boolean;
 }) => (
   <div>
@@ -1550,6 +1840,10 @@ const FormField = ({
       name={name}
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      autoComplete={autoComplete}
+      placeholder={placeholder}
       required={required}
       className="w-full h-11 bg-card rounded-lg px-3 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 outline-none card-shadow"
     />
@@ -1697,6 +1991,44 @@ export default DesignUpload;
 const createSizeQuantityMap = (sizes: string[]): Record<string, number> =>
   Object.fromEntries(sizes.map((size) => [size, 0]));
 
+const sanitizeSizeQuantitiesRecord = (value: unknown): Record<string, number> => {
+  if (!value || typeof value !== "object") return {};
+  return Object.entries(value as Record<string, unknown>).reduce<Record<string, number>>((acc, [size, qty]) => {
+    const parsed = Number(qty);
+    acc[size] = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+    return acc;
+  }, {});
+};
+
+const createVariantQuantityKey = (productId: string, colorValue: string) =>
+  `${productId}::${colorValue}`;
+
+const sanitizeQuantityDraftsByVariant = (value: unknown): Record<string, Record<string, number>> => {
+  if (!value || typeof value !== "object") return {};
+  return Object.entries(value as Record<string, unknown>).reduce<Record<string, Record<string, number>>>(
+    (acc, [variantKey, sizes]) => {
+      acc[variantKey] = sanitizeSizeQuantitiesRecord(sizes);
+      return acc;
+    },
+    {}
+  );
+};
+
+const buildSizeQuantities = (sizes: string[], source?: Record<string, number>): Record<string, number> => {
+  const next = createSizeQuantityMap(sizes);
+  if (!source) return next;
+  sizes.forEach((size) => {
+    const qty = Number(source[size] ?? 0);
+    next[size] = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 0;
+  });
+  return next;
+};
+
+const areSizeQuantitiesEqual = (a: Record<string, number>, b: Record<string, number>) => {
+  const keys = Array.from(new Set([...Object.keys(a), ...Object.keys(b)]));
+  return keys.every((key) => (Number(a[key]) || 0) === (Number(b[key]) || 0));
+};
+
 const createEmptyDesignMap = (): Record<string, PlacementDesign[]> =>
   Object.fromEntries(steps.map((step) => [step.id, [emptyDesign()]]));
 
@@ -1737,6 +2069,105 @@ const createAiPreviewDataUrl = (fileName: string) => {
     <text x='600' y='690' text-anchor='middle' font-family='Arial, Helvetica, sans-serif' font-size='36' fill='#94a3b8'>Preview placeholder</text>
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
+const createLogoBankAssetId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `logo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const createLogoBankAssetKey = (fileName: string, source: string) =>
+  `${fileName.trim().toLowerCase()}::${String(source).slice(0, 180)}`;
+
+const normalizePhoneWithDefaultCountryCode = (input: string) => {
+  const trimmed = String(input || "").trim();
+  if (!trimmed) return "+45 ";
+  const normalizedInternational = trimmed.startsWith("00") ? `+${trimmed.slice(2)}` : trimmed;
+  if (/^\+\d/.test(normalizedInternational)) return normalizedInternational;
+  const digitsOnly = normalizedInternational.replace(/\D+/g, "");
+  if (!digitsOnly) return "+45 ";
+  return `+45 ${digitsOnly}`;
+};
+
+const normalizeSuggestionLabel = (item: unknown): string => {
+  if (!item || typeof item !== "object") return "";
+  const entry = item as Record<string, unknown>;
+  const data =
+    entry.data && typeof entry.data === "object" ? (entry.data as Record<string, unknown>) : null;
+  const directText =
+    typeof entry.tekst === "string"
+      ? entry.tekst
+      : typeof entry.forslagstekst === "string"
+      ? entry.forslagstekst
+      : typeof entry.adresse === "string"
+      ? entry.adresse
+      : "";
+  if (directText) return directText;
+  if (!data) return "";
+
+  const road = typeof data.vejnavn === "string" ? data.vejnavn : "";
+  const number = typeof data.husnr === "string" ? data.husnr : "";
+  const floor = typeof data.etage === "string" ? data.etage : "";
+  const door = typeof data.dør === "string" ? data.dør : "";
+  const postCode = typeof data.postnr === "string" ? data.postnr : "";
+  const city = typeof data.postnrnavn === "string" ? data.postnrnavn : "";
+  return [road, number, floor, door, postCode, city].filter(Boolean).join(" ");
+};
+
+const extractSuggestionPostCode = (item: unknown, fallbackLabel: string) => {
+  if (item && typeof item === "object") {
+    const entry = item as Record<string, unknown>;
+    const data =
+      entry.data && typeof entry.data === "object" ? (entry.data as Record<string, unknown>) : null;
+    const code =
+      (typeof entry.postnr === "string" && entry.postnr) ||
+      (typeof entry.postnummer === "string" && entry.postnummer) ||
+      (data && typeof data.postnr === "string" && data.postnr) ||
+      "";
+    if (code) return code;
+  }
+  const match = fallbackLabel.match(/\b\d{4}\b/);
+  return match?.[0] || "";
+};
+
+const parseAddressSuggestions = (payload: unknown): Array<{ id: string; label: string; postCode: string }> => {
+  if (!Array.isArray(payload)) return [];
+  return payload
+    .map((item, index) => {
+      const label = normalizeSuggestionLabel(item).trim();
+      const postCode = extractSuggestionPostCode(item, label);
+      const id =
+        item && typeof item === "object" && typeof (item as Record<string, unknown>).id === "string"
+          ? ((item as Record<string, unknown>).id as string)
+          : `${label}-${index}`;
+      return { id, label, postCode };
+    })
+    .filter((entry) => Boolean(entry.label));
+};
+
+const sanitizePersistedLogoBankAssets = (value: PersistedDesignUploadState["logoBankAssets"]): LogoBankAsset[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((asset) => asset && typeof asset === "object")
+    .map((asset) => {
+      const fileName = typeof asset.fileName === "string" ? asset.fileName : "";
+      const previewUrl = typeof asset.previewUrl === "string" ? asset.previewUrl : "";
+      const sourceUrl =
+        typeof asset.sourceUrl === "string"
+          ? asset.sourceUrl
+          : asset.sourceUrl === null
+          ? null
+          : null;
+      return {
+        id: typeof asset.id === "string" && asset.id ? asset.id : createLogoBankAssetId(),
+        fileName,
+        previewUrl,
+        sourceUrl,
+      };
+    })
+    .filter((asset) => Boolean(asset.fileName) && Boolean(asset.previewUrl));
 };
 
 const sanitizePersistedDesigns = (
@@ -1794,21 +2225,28 @@ const readPersistedState = (): PersistedDesignUploadState | null => {
       name: typeof parsed.formInputs?.name === "string" ? parsed.formInputs.name : "",
       company: typeof parsed.formInputs?.company === "string" ? parsed.formInputs.company : "",
       address: typeof parsed.formInputs?.address === "string" ? parsed.formInputs.address : "",
+      postCode: typeof (parsed.formInputs as Partial<QuoteFormInputs> | undefined)?.postCode === "string"
+        ? (parsed.formInputs as Partial<QuoteFormInputs>).postCode || ""
+        : "",
       email: typeof parsed.formInputs?.email === "string" ? parsed.formInputs.email : "",
-      phone: typeof parsed.formInputs?.phone === "string" ? parsed.formInputs.phone : "",
+      phone: normalizePhoneWithDefaultCountryCode(
+        typeof parsed.formInputs?.phone === "string" ? parsed.formInputs.phone : "+45 "
+      ),
       notes: typeof parsed.formInputs?.notes === "string" ? parsed.formInputs.notes : "",
     };
     return {
       currentStep: typeof parsed.currentStep === "number" ? parsed.currentStep : 0,
       hasEnteredDesign: typeof parsed.hasEnteredDesign === "boolean" ? parsed.hasEnteredDesign : false,
       selectedProduct: typeof parsed.selectedProduct === "string" ? parsed.selectedProduct : "basic-tshirt",
-      sizeQuantities: parsed.sizeQuantities && typeof parsed.sizeQuantities === "object" ? parsed.sizeQuantities : {},
+      sizeQuantities: sanitizeSizeQuantitiesRecord(parsed.sizeQuantities),
+      quantityDraftsByVariant: sanitizeQuantityDraftsByVariant(parsed.quantityDraftsByVariant),
       selectedColor: typeof parsed.selectedColor === "string" ? parsed.selectedColor : "black",
       designs: sanitizePersistedDesigns(parsed.designs) ?? (() => {
         const fallback: Record<string, PlacementDesign[]> = {};
         steps.forEach((s) => { fallback[s.id] = [emptyDesign()]; });
         return fallback;
       })(),
+      logoBankAssets: sanitizePersistedLogoBankAssets(parsed.logoBankAssets),
       formInputs,
     };
   } catch {
@@ -1878,7 +2316,7 @@ const loadImage = (src: string) =>
 
 const dataUrlToBlob = async (dataUrl: string) => {
   const resolved = await resolveUploadRefToDataUrl(dataUrl);
-  if (!resolved || !isDataUrl(resolved)) {
+  if (!resolved) {
     throw new Error("Invalid upload reference");
   }
   const response = await fetch(resolved);
@@ -1921,7 +2359,7 @@ const drawPlacementMockup = async (
 
   for (const design of uploaded) {
     const resolvedUpload = await resolveUploadRefToDataUrl(design.uploadFile || null);
-    const imageSource = resolvedUpload || design.file;
+    const imageSource = design.file || resolvedUpload;
     if (!imageSource) continue;
     const logoImg = await loadImage(imageSource);
     const offsetX =

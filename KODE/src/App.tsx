@@ -7,6 +7,7 @@ import { LanguageProvider } from "@/i18n/LanguageContext";
 import Storformatprint from "./pages/Storformatprint";
 import PrintDesign from "./pages/PrintDesign";
 import Produkter from "./pages/Produkter";
+import Index from "./pages/Index";
 import DesignUpload from "./pages/DesignUpload";
 import TextileProductSetup from "./pages/TextileProductSetup";
 import Kurv from "./pages/Kurv";
@@ -23,7 +24,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Routes>
-            <Route path="/" element={<Navigate to="/tekstiltryk/produkter" replace />} />
+            <Route path="/" element={<Index />} />
             <Route path="/tekstiltryk" element={<Navigate to="/tekstiltryk/produkter" replace />} />
             <Route path="/storformatprint" element={<Storformatprint />} />
             <Route path="/print/design" element={<PrintDesign />} />

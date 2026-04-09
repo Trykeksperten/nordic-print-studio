@@ -163,7 +163,7 @@ const drawPlacementMockup = async (entry: CartDesignEntry, placementId: string):
 
   for (const design of uploaded) {
     const resolvedUpload = await resolveUploadRefToDataUrl(design.uploadFile || null);
-    const imageSource = resolvedUpload || design.file;
+    const imageSource = design.file || resolvedUpload;
     if (!imageSource) continue;
     const logoImg = await loadImage(imageSource);
     const offsetX =

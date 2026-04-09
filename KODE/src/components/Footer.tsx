@@ -3,9 +3,12 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { Mail, Phone, MapPin } from "lucide-react";
 
 const Footer = () => {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const logoSrc = `${import.meta.env.BASE_URL}trykeksperten-logo.png`;
+  const isDa = lang === "da";
 
   const navLinks = [
+    { path: "/", label: isDa ? "Forside" : "Home" },
     { path: "/storformatprint", label: t("nav.largeFormat") },
     { path: "/tekstiltryk/produkter", label: t("nav.textilePrint") },
     { path: "/kontakt", label: t("nav.contact") },
@@ -13,47 +16,60 @@ const Footer = () => {
 
   return (
     <footer className="bg-background text-foreground border-t border-border">
-      <div className="container mx-auto px-4 lg:px-8 py-4 md:py-5">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Brand + contact */}
+      <div className="container mx-auto px-4 lg:px-8 py-12 md:py-16">
+        <div className="flex justify-start mb-10">
+          <Link to="/" className="inline-flex items-center">
+            <img src={logoSrc} alt="Trykeksperten" className="h-14 w-auto object-contain" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 items-start">
           <div>
-            <h3 className="text-sm font-bold mb-1.5">Trykeksperten</h3>
-            <div className="space-y-1 text-muted-foreground text-xs">
+            <h3 className="text-base font-bold mb-3">{isDa ? "Om Trykeksperten" : "About Trykeksperten"}</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
+              {isDa
+                ? "Trykeksperten er et dansk trykkeri med fokus på tekstiltryk, storformatprint og professionel rådgivning. Vi hjælper virksomheder, foreninger og events med at skabe stærke visuelle løsninger med kvalitet og præcision."
+                : "Trykeksperten is a Danish print studio focused on textile printing, large format production, and professional guidance. We help companies, associations, and events create strong visual solutions with quality and precision."}
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-base font-bold mb-3">Trykeksperten ApS</h3>
+            <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex items-start gap-2">
-                <MapPin size={16} className="mt-0.5 shrink-0" />
-                <span>Trykeksperten ApS<br />Raffinaderivej 10E<br />2300 København S</span>
+                <MapPin size={17} className="mt-0.5 shrink-0" />
+                <span>
+                  Raffinaderivej 10E
+                  <br />
+                  2300 København S
+                </span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone size={16} className="shrink-0" />
+                <Phone size={17} className="shrink-0" />
                 <span>+45 27822277</span>
               </div>
               <div className="flex items-center gap-2">
-                <Mail size={16} className="shrink-0" />
+                <Mail size={17} className="shrink-0" />
                 <span>kontakt@trykeksperten.dk</span>
               </div>
             </div>
           </div>
 
-          {/* Navigation */}
           <div>
-            <h3 className="text-sm font-bold mb-1.5">{t("footer.navigation")}</h3>
-            <nav className="space-y-1">
+            <h3 className="text-base font-bold mb-3">{t("footer.navigation")}</h3>
+            <nav className="space-y-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className="block text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {link.label}
                 </Link>
               ))}
             </nav>
-          </div>
-
-          {/* Social */}
-          <div>
-            <h3 className="text-sm font-bold mb-1.5">{t("footer.followUs")}</h3>
-            <div className="flex gap-2">
+            <h3 className="text-base font-bold mt-8 mb-3">{t("footer.followUs")}</h3>
+            <div className="flex gap-3">
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Facebook">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
               </a>
@@ -67,7 +83,7 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="mt-4 pt-2.5 border-t border-border text-center text-xs text-muted-foreground">
+        <div className="mt-10 pt-4 border-t border-border text-center text-xs text-muted-foreground">
           © {new Date().getFullYear()} Trykeksperten. {t("footer.rights")}
         </div>
       </div>

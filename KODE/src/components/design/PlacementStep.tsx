@@ -30,6 +30,13 @@ export interface PlacementDesign {
   sizeCategory: string;
 }
 
+export interface LogoBankAsset {
+  id: string;
+  fileName: string;
+  previewUrl: string;
+  sourceUrl?: string | null;
+}
+
 interface PlacementStepProps {
   placementId: string;
   label: string;
@@ -38,6 +45,10 @@ interface PlacementStepProps {
   customMockups?: Partial<Record<string, string>>;
   designs: PlacementDesign[];
   onDesignsChange: (designs: PlacementDesign[]) => void;
+  logoBankAssets: LogoBankAsset[];
+  onUploadToLogoBank: (asset: Omit<LogoBankAsset, "id">) => void;
+  onRemoveLogoBankAsset?: (assetId: string) => void;
+  onActiveDesignChange?: (designIndex: number) => void;
   focusRequest?: { designIndex: number; nonce: number };
   stepControls?: ReactNode;
   showHeader?: boolean;
@@ -72,6 +83,7 @@ const printableAreaWidthCmByPlacement: Record<string, number> = {
   leftSleeve: 12,
   rightSleeve: 12,
 };
+const LOCKED_TORSO_REFERENCE_WIDTH_CM = 35;
 const LOCK_PRINT_AREA_CM = true;
 const CENTER_SNAP_THRESHOLD_PX = 14;
 const SNAP_TARGETS_STORAGE_KEY = "trykeksperten:snap-targets:v1";
@@ -512,21 +524,6 @@ export const emptyDesign = (): PlacementDesign => ({
   sizeCategory: "1-6",
 });
 
-const isAiFileName = (name: string) => name.toLowerCase().endsWith(".ai");
-
-const createAiPreviewDataUrl = (fileName: string) => {
-  const safeLabel = fileName.replace(/[<>&]/g, "");
-  const svg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
-  <rect width="800" height="800" fill="#f3f4f6"/>
-  <rect x="80" y="80" width="640" height="640" rx="36" fill="#e5e7eb" stroke="#cbd5e1" stroke-width="8"/>
-  <text x="400" y="355" text-anchor="middle" font-family="Arial, sans-serif" font-size="132" font-weight="700" fill="#1f2937">AI</text>
-  <text x="400" y="430" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="#475569">Preview not available</text>
-  <text x="400" y="480" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#64748b">${safeLabel}</text>
-</svg>`.trim();
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-};
-
 const PlacementStep = ({
   placementId,
   label,
@@ -535,6 +532,10 @@ const PlacementStep = ({
   customMockups,
   designs,
   onDesignsChange,
+  logoBankAssets,
+  onUploadToLogoBank,
+  onRemoveLogoBankAsset,
+  onActiveDesignChange,
   focusRequest,
   stepControls,
   showHeader = true,
@@ -577,6 +578,13 @@ const PlacementStep = ({
   }, [designs.length, focusRequest]);
 
   useEffect(() => {
+    if (!onActiveDesignChange) return;
+    const design = designs[activeIndex];
+    if (!design?.file) return;
+    onActiveDesignChange(activeIndex);
+  }, [activeIndex, designs, onActiveDesignChange]);
+
+  useEffect(() => {
     const saved = getPrintAreaCmStorageMap()[printAreaCmStorageKey];
     const fallback = getDefaultPrintableAreaWidthCm(placementId);
     if (typeof saved === "number" && Number.isFinite(saved) && saved > 0) {
@@ -586,9 +594,11 @@ const PlacementStep = ({
     setPrintableAreaWidthCm(fallback);
   }, [placementId, printAreaCmStorageKey, productId]);
 
-  // Physical scale: pixelsPerCm = printableAreaPx / printableAreaCm.
-  // We store scale as ratio of selected logo width to printable area width in cm.
-  const baseLogoWidthCm = printableAreaWidthCm;
+  // Physical scale baseline for sizing calculations.
+  // For fullFront we use the manually calibrated torso reference width.
+  // Other placements keep using printable area width.
+  const baseLogoWidthCm =
+    placementId === "fullFront" ? LOCKED_TORSO_REFERENCE_WIDTH_CM : printableAreaWidthCm;
   const currentSizeBoundsCm =
     sizeCategoryCmBounds[controlsDesign.sizeCategory] ?? sizeCategoryCmBounds["1-6"];
   const currentLogoWidthCm = useMemo(
@@ -639,55 +649,91 @@ const PlacementStep = ({
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const targetIndex = activeIndex;
-    const targetDesign = designs[targetIndex] || emptyDesign();
-    const shouldAppendNew = Boolean(targetDesign.file);
     const fileName = file.name.toLowerCase();
-    const validExtension = fileName.endsWith(".png") || fileName.endsWith(".svg") || fileName.endsWith(".ai");
-    if (!validExtension) {
-      toast.error(lang === "da" ? "Kun PNG, SVG eller AI filer er tilladt" : "Only PNG, SVG or AI files are allowed");
+    const validExtension =
+      fileName.endsWith(".png") || fileName.endsWith(".svg") || fileName.endsWith(".jpg") || fileName.endsWith(".jpeg");
+    const mimeType = (file.type || "").toLowerCase();
+    const validMimeType = mimeType === "image/png" || mimeType === "image/svg+xml" || mimeType === "image/jpeg";
+    if (!validExtension || (mimeType && !validMimeType)) {
+      toast.error(
+        lang === "da"
+          ? "Kun PNG, SVG eller JPEG filer er tilladt"
+          : "Only PNG, SVG or JPEG files are allowed"
+      );
       e.target.value = "";
       return;
     }
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       const uploadedDataUrl = ev.target?.result as string;
-      const aiUpload = isAiFileName(file.name);
-      const previewDataUrl = aiUpload ? createAiPreviewDataUrl(file.name) : uploadedDataUrl;
-      const nextDesign: PlacementDesign = {
-        ...(shouldAppendNew ? emptyDesign() : targetDesign),
-        file: previewDataUrl,
-        uploadFile: aiUpload ? uploadedDataUrl : null,
+      const normalizedDataUrl = await normalizeImportedAssetDataUrl(uploadedDataUrl).catch(() => uploadedDataUrl);
+      onUploadToLogoBank({
         fileName: file.name,
-        pos: { x: 0, y: 0 },
-        posPct: { x: 0, y: 0 },
-        scale: getDefaultScale((shouldAppendNew ? "1-6" : targetDesign.sizeCategory), baseLogoWidthCm),
-      };
-      if (aiUpload) {
-        toast.info(lang === "da" ? "AI-filen sendes korrekt, men vises som placeholder i preview." : "AI file is uploaded correctly, but shown as a placeholder in preview.");
-      }
-      if (shouldAppendNew) {
-        const nextDesigns = [...designs, nextDesign];
-        onDesignsChange(nextDesigns);
-        setActiveIndex(nextDesigns.length - 1);
-      } else {
-        updateDesign(targetIndex, nextDesign);
-      }
+        previewUrl: normalizedDataUrl,
+        sourceUrl: normalizedDataUrl,
+      });
+      toast.success(
+        lang === "da"
+          ? "Uploadet til logobank. Klik på logoet for at aktivere det."
+          : "Uploaded to logo bank. Click the logo to activate it."
+      );
       e.target.value = "";
     };
     reader.readAsDataURL(file);
   };
 
-  const handleRemoveDesign = (index: number) => {
-    if (designs.length <= 1) {
-      updateDesign(0, emptyDesign());
+  const insertDesignFromSource = (input: {
+    fileName: string;
+    previewUrl: string;
+    sourceUrl?: string | null;
+  }) => {
+    const targetIndex = activeIndex;
+    const targetDesign = designs[targetIndex] || emptyDesign();
+    const shouldAppendNew = Boolean(targetDesign.file);
+    const nextDesign: PlacementDesign = {
+      ...(shouldAppendNew ? emptyDesign() : targetDesign),
+      file: input.previewUrl,
+      uploadFile: input.sourceUrl || null,
+      fileName: input.fileName,
+      pos: { x: 0, y: 0 },
+      posPct: { x: 0, y: 0 },
+      scale: getDefaultScale((shouldAppendNew ? "1-6" : targetDesign.sizeCategory), baseLogoWidthCm),
+    };
+    if (shouldAppendNew) {
+      const nextDesigns = [...designs, nextDesign];
+      onDesignsChange(nextDesigns);
+      setActiveIndex(nextDesigns.length - 1);
     } else {
-      const newDesigns = designs.filter((_, i) => i !== index);
-      onDesignsChange(newDesigns);
-      if (activeIndex >= newDesigns.length) {
-        setActiveIndex(newDesigns.length - 1);
-      }
+      updateDesign(targetIndex, nextDesign);
     }
+  };
+
+  const createActivationKeyFromAsset = (asset: { fileName: string; sourceUrl?: string | null; previewUrl: string }) =>
+    `${asset.fileName.trim().toLowerCase()}::${String(asset.sourceUrl || asset.previewUrl).slice(0, 180)}`;
+
+  const createActivationKeyFromDesign = (design: PlacementDesign) =>
+    `${design.fileName.trim().toLowerCase()}::${String(design.uploadFile || design.file || "").slice(0, 180)}`;
+
+  const handleActivateLogoBankAsset = (asset: LogoBankAsset) => {
+    const activationKey = createActivationKeyFromAsset(asset);
+    const existingIndex = designs.findIndex(
+      (design) => Boolean(design.file) && createActivationKeyFromDesign(design) === activationKey
+    );
+    if (existingIndex >= 0) {
+      setActiveIndex(existingIndex);
+      toast.info(
+        lang === "da"
+          ? "Logoet er allerede aktivt på denne placering."
+          : "This logo is already active on this placement."
+      );
+      return;
+    }
+
+    insertDesignFromSource({
+      fileName: asset.fileName,
+      previewUrl: asset.previewUrl,
+      sourceUrl: asset.sourceUrl ?? null,
+    });
   };
 
   const handleLogoWidthCmChange = (rawValue: string) => {
@@ -801,17 +847,13 @@ const PlacementStep = ({
     const rect = containerRef.current?.getBoundingClientRect();
     const printAreaWidthPx = rect ? (rect.width * areaPos.width) / 100 : 0;
     const printAreaHeightPx = rect ? (rect.height * areaPos.height) / 100 : 0;
-    const targetOffsetX = ((snapGuidePosition.x - 50) / 100) * printAreaWidthPx;
-    const targetOffsetY = ((snapGuidePosition.y - 50) / 100) * printAreaHeightPx;
-    const snapX = Math.abs(rawX - targetOffsetX) <= CENTER_SNAP_THRESHOLD_PX;
-    const snapY = Math.abs(rawY - targetOffsetY) <= CENTER_SNAP_THRESHOLD_PX;
-    setCenterGuide({ x: snapX, y: snapY });
+    setCenterGuide({ x: false, y: false });
     updateDesign(activeIndex, {
       ...currentDesign,
-      pos: { x: snapX ? targetOffsetX : rawX, y: snapY ? targetOffsetY : rawY },
-      posPct: toPosPct(snapX ? targetOffsetX : rawX, snapY ? targetOffsetY : rawY, printAreaWidthPx, printAreaHeightPx),
+      pos: { x: rawX, y: rawY },
+      posPct: toPosPct(rawX, rawY, printAreaWidthPx, printAreaHeightPx),
     });
-  }, [isCalibratingSnap, calibratingAxis, updateSnapTargetFromClient, isDragging, isDraggingArea, isResizingArea, currentDesign, activeIndex, areaPos.width, areaPos.height, snapGuidePosition.x, snapGuidePosition.y]);
+  }, [isCalibratingSnap, calibratingAxis, updateSnapTargetFromClient, isDragging, isDraggingArea, isResizingArea, currentDesign, activeIndex, areaPos.width, areaPos.height]);
 
   const handleMouseUp = useCallback(() => {
     if (isCalibratingSnap) {
@@ -851,17 +893,13 @@ const PlacementStep = ({
     const rect = containerRef.current?.getBoundingClientRect();
     const printAreaWidthPx = rect ? (rect.width * areaPos.width) / 100 : 0;
     const printAreaHeightPx = rect ? (rect.height * areaPos.height) / 100 : 0;
-    const targetOffsetX = ((snapGuidePosition.x - 50) / 100) * printAreaWidthPx;
-    const targetOffsetY = ((snapGuidePosition.y - 50) / 100) * printAreaHeightPx;
-    const snapX = Math.abs(rawX - targetOffsetX) <= CENTER_SNAP_THRESHOLD_PX;
-    const snapY = Math.abs(rawY - targetOffsetY) <= CENTER_SNAP_THRESHOLD_PX;
-    setCenterGuide({ x: snapX, y: snapY });
+    setCenterGuide({ x: false, y: false });
     updateDesign(activeIndex, {
       ...currentDesign,
-      pos: { x: snapX ? targetOffsetX : rawX, y: snapY ? targetOffsetY : rawY },
-      posPct: toPosPct(snapX ? targetOffsetX : rawX, snapY ? targetOffsetY : rawY, printAreaWidthPx, printAreaHeightPx),
+      pos: { x: rawX, y: rawY },
+      posPct: toPosPct(rawX, rawY, printAreaWidthPx, printAreaHeightPx),
     });
-  }, [isDragging, currentDesign, activeIndex, areaPos.width, areaPos.height, snapGuidePosition.x, snapGuidePosition.y]);
+  }, [isDragging, currentDesign, activeIndex, areaPos.width, areaPos.height]);
 
   const handleAreaMouseDown = useCallback((e: React.MouseEvent) => {
     if (areaLocked) return;
@@ -998,33 +1036,49 @@ const PlacementStep = ({
             />
 
             {/* All uploaded designs rendered on mockup */}
-            {uploadedDesigns.map((d, i) => (
-              <div key={i} className="absolute" style={{ ...printArea, pointerEvents: "none" }}>
-                {(() => {
-                  const designPos = getDesignPosPx(d);
-                  return (
-                <img
-                  src={d.file!}
-                  alt={`Design ${i + 1}`}
-                  className="absolute"
-                  style={{
-                    left: "50%",
-                    top: "50%",
-                    width: `${Math.max(0.1, d.scale) * 100}%`,
-                    height: "auto",
-                    maxWidth: "none",
-                    transform: `translate(-50%, -50%) translate(${designPos.x}px, ${designPos.y}px)`,
-                    pointerEvents: designs.indexOf(d) === activeIndex ? "auto" : "none",
-                    opacity: designs.indexOf(d) === activeIndex ? 1 : 0.5,
-                  }}
-                  onMouseDown={designs.indexOf(d) === activeIndex ? handleMouseDown : undefined}
-                  onTouchStart={designs.indexOf(d) === activeIndex ? handleTouchStart : undefined}
-                  draggable={false}
-                />
-                  );
-                })()}
-              </div>
-            ))}
+            {designs.map((design, index) => {
+              if (!design.file) return null;
+              const designPos = getDesignPosPx(design);
+              return (
+                <div key={index} className="absolute" style={{ ...printArea, pointerEvents: "none" }}>
+                  <div
+                    className="absolute cursor-pointer"
+                    style={{
+                      left: "50%",
+                      top: "50%",
+                      width: `${Math.max(0.1, design.scale) * 100}%`,
+                      height: "auto",
+                      maxWidth: "none",
+                      transform: `translate(-50%, -50%) translate(${designPos.x}px, ${designPos.y}px)`,
+                      pointerEvents: "auto",
+                      opacity: 1,
+                    }}
+                    onMouseDown={(e) => {
+                      if (activeIndex !== index) {
+                        setActiveIndex(index);
+                        return;
+                      }
+                      handleMouseDown(e);
+                    }}
+                    onTouchStart={(e) => {
+                      if (activeIndex !== index) {
+                        setActiveIndex(index);
+                        return;
+                      }
+                      handleTouchStart(e);
+                    }}
+                    title={lang === "da" ? "Klik for at aktivere logo" : "Click to activate logo"}
+                  >
+                    <img
+                      src={design.file}
+                      alt={`Design ${index + 1}`}
+                      className="block w-full h-auto select-none"
+                      draggable={false}
+                    />
+                  </div>
+                </div>
+              );
+            })}
 
             <div className="absolute pointer-events-none" style={printArea}>
               {canAdjustSnapCenter && (
@@ -1096,39 +1150,43 @@ const PlacementStep = ({
               <label className="flex items-center justify-center gap-2 bg-card rounded-xl card-shadow p-5 cursor-pointer hover:card-shadow-hover transition-all border-2 border-dashed border-border hover:border-primary/30">
                 <Upload size={18} className="text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  {lang === "da" ? "Klik for at uploade (PNG, SVG, AI)" : "Click to upload (PNG, SVG, AI)"}
+                  {lang === "da" ? "Klik her for at uploade til din logo bank" : "Click here to upload to your logo bank"}
                 </span>
-                <input type="file" accept=".png,.svg,.ai,image/png,image/svg+xml" onChange={handleFileUpload} className="hidden" />
+                <input
+                  type="file"
+                  accept=".png,.svg,.jpg,.jpeg,image/png,image/svg+xml,image/jpeg"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
               </label>
             </div>
 
-            {uploadedDesigns.length > 0 ? (
+            {logoBankAssets.length > 0 ? (
               <div className="mt-3 space-y-2">
-                {designs.map((design, index) => {
-                  if (!design.file) return null;
+                {logoBankAssets.map((asset) => {
                   return (
                     <div
-                      key={index}
-                      className={`flex items-center justify-between rounded-xl p-2 transition-all ${
-                        activeIndex === index ? "bg-primary/10" : "bg-muted/40"
-                      }`}
+                      key={asset.id}
+                      className="flex items-center justify-between rounded-xl p-2 transition-all bg-muted/40"
                     >
                       <button
                         type="button"
-                        onClick={() => setActiveIndex(index)}
+                        onClick={() => handleActivateLogoBankAsset(asset)}
                         className="flex min-w-0 flex-1 items-center gap-2 text-left"
                       >
-                        <img src={design.file} alt="" className="w-10 h-10 object-contain rounded bg-muted shrink-0" />
-                        <span className="text-sm text-muted-foreground truncate">{design.fileName}</span>
+                        <img src={asset.previewUrl} alt="" className="w-10 h-10 object-contain rounded bg-muted shrink-0" />
+                        <span className="text-sm text-muted-foreground truncate">{asset.fileName}</span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveDesign(index)}
-                        className="p-2 hover:bg-muted rounded-lg transition-colors shrink-0"
-                        title={lang === "da" ? "Fjern design" : "Remove design"}
-                      >
-                        <X size={18} className="text-muted-foreground" />
-                      </button>
+                      {onRemoveLogoBankAsset ? (
+                        <button
+                          type="button"
+                          onClick={() => onRemoveLogoBankAsset(asset.id)}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors shrink-0"
+                          title={lang === "da" ? "Fjern logo fra bank" : "Remove logo from bank"}
+                        >
+                          <X size={18} className="text-muted-foreground" />
+                        </button>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -1142,6 +1200,11 @@ const PlacementStep = ({
                 <Move size={14} />
                 {lang === "da" ? "Træk og tilpas dit design" : "Drag and adjust your design"}
               </div>
+              {uploadedDesigns.length > 0 && (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  {lang === "da" ? "Klik på et logo for at aktivere og flytte det." : "Click a logo to activate and move it."}
+                </p>
+              )}
               <div className="mt-2 flex items-center gap-2">
                 <label className="text-xs text-muted-foreground shrink-0">{lang === "da" ? "Størrelse" : "Size"}</label>
                 <input
@@ -1157,30 +1220,6 @@ const PlacementStep = ({
                 <span className="text-xs text-muted-foreground w-14 shrink-0 text-right whitespace-nowrap">
                   {currentLogoWidthCm.toFixed(1)} cm
                 </span>
-              </div>
-
-              <div className="mt-2 flex items-center gap-2">
-                <label className="text-[11px] text-muted-foreground shrink-0">
-                  {lang === "da" ? "Printområde (cm)" : "Print area (cm)"}
-                </label>
-                <input
-                  type="number"
-                  min={5}
-                  max={80}
-                  step={0.5}
-                  value={Number.isFinite(printableAreaWidthCm) ? printableAreaWidthCm : getDefaultPrintableAreaWidthCm(placementId)}
-                  onChange={(e) => handlePrintableAreaWidthCmChange(e.target.value)}
-                  disabled={LOCK_PRINT_AREA_CM}
-                  className="h-8 w-20 rounded border border-border bg-background px-2 text-xs"
-                />
-                <button
-                  type="button"
-                  onClick={handleResetPrintableAreaWidthCm}
-                  disabled={LOCK_PRINT_AREA_CM}
-                  className="text-[11px] text-muted-foreground hover:text-foreground"
-                >
-                  {LOCK_PRINT_AREA_CM ? (lang === "da" ? "Låst" : "Locked") : (lang === "da" ? "Nulstil" : "Reset")}
-                </button>
               </div>
 
               <div className="mt-3">
@@ -1422,6 +1461,33 @@ const perceivedLuminance = (r: number, g: number, b: number) =>
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
 
 const clamp255 = (value: number) => Math.max(0, Math.min(255, Math.round(value)));
+
+const loadImageElement = (src: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+
+const normalizeImportedAssetDataUrl = async (dataUrl: string) => {
+  if (!dataUrl?.startsWith("data:image/")) return dataUrl;
+  const img = await loadImageElement(dataUrl);
+  const maxEdge = 2048;
+  const scale = Math.min(1, maxEdge / Math.max(img.width, img.height, 1));
+  const width = Math.max(1, Math.round(img.width * scale));
+  const height = Math.max(1, Math.round(img.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUrl;
+  ctx.clearRect(0, 0, width, height);
+  ctx.drawImage(img, 0, 0, width, height);
+  // Exporting through canvas strips source DPI/physical print-size metadata.
+  return canvas.toDataURL("image/png");
+};
 
 const getScaleBounds = (sizeCategory: string, baseLogoWidthCm: number) => {
   const bounds = sizeCategoryCmBounds[sizeCategory] ?? sizeCategoryCmBounds["1-6"];

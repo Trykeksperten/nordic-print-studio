@@ -48,7 +48,7 @@ export const translations = {
   process: {
     title: { da: "Sådan fungerer det", en: "How It Works" },
     steps: [
-      { da: { title: "Upload dit design", desc: "Send os dit logo eller design i PNG, SVG eller AI-format." }, en: { title: "Upload Your Design", desc: "Send us your logo or design in PNG, SVG or AI format." } },
+      { da: { title: "Upload dit design", desc: "Send os dit logo eller design i PNG, SVG eller JPEG-format." }, en: { title: "Upload Your Design", desc: "Send us your logo or design in PNG, SVG or JPEG format." } },
       { da: { title: "Vælg produkter", desc: "Vælg blandt vores udvalg af kvalitetsprodukter." }, en: { title: "Choose Products", desc: "Choose from our selection of quality products." } },
       { da: { title: "Modtag tilbud", desc: "Vi sender dig et uforpligtende tilbud inden for 24 timer." }, en: { title: "Receive Quote", desc: "We send you a no-obligation quote within 24 hours." } },
       { da: { title: "Levering", desc: "Dit færdige produkt leveres til døren inden for 5-7 hverdage." }, en: { title: "Delivery", desc: "Your finished product is delivered to your door within 5-7 business days." } },
@@ -131,7 +131,7 @@ export const translations = {
     title: { da: "Fantastisk design! Skriv dine oplysninger nedenfor og vi kontakter dig!", en: "Upload Design & Get Quote" },
     subtitle: { da: "Upload dit design, vælg placering og modtag et tilbud", en: "Upload your design, choose placement and receive a quote" },
     mockupTitle: { da: "Design forhåndsvisning", en: "Design Preview" },
-    uploadFile: { da: "Upload dit design (PNG, SVG, AI)", en: "Upload your design (PNG, SVG, AI)" },
+    uploadFile: { da: "Upload dit design (PNG, SVG, JPEG)", en: "Upload your design (PNG, SVG, JPEG)" },
     placement: { da: "Vælg placering", en: "Choose Placement" },
     formTitle: { da: "Dine oplysninger", en: "Your Information" },
     name: { da: "Navn", en: "Name" },

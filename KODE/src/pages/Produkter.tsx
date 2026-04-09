@@ -102,27 +102,11 @@ const edgeFillScaleByProduct: Record<string, string> = {
 const Produkter = () => {
   const navigate = useNavigate();
   const { lang } = useLanguage();
-  const title = lang === "da" ? "Produkter" : "Products";
-  const subtitle = lang === "da" ? "Udforsk vores udvalg af kvalitetsprodukter" : "Explore our selection of quality products";
   const sizesLabel = lang === "da" ? "Størrelser" : "Sizes";
   const ctaLabel = lang === "da" ? "Design og få tilbud" : "Design and Get Quote";
 
   return (
     <Layout>
-      <section className="pt-8 md:pt-12 pb-2 md:pb-3 bg-white">
-        <div className="container mx-auto px-4 lg:px-8">
-          <motion.div
-            className="max-w-2xl"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] as const }}
-          >
-            <h1 className="text-lg md:text-xl font-bold mb-0">{title}</h1>
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
-          </motion.div>
-        </div>
-      </section>
-
       <section className="py-24 bg-white">
         <div className="container mx-auto px-4 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

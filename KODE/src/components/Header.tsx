@@ -18,7 +18,7 @@ const readCartCount = () => {
         typeof item?.totalQuantity === "number"
           ? item.totalQuantity
           : Object.values(item?.sizeQuantities ?? {}).reduce(
-              (qty, value) => qty + (Number(value) || 0),
+              (qty: number, value) => qty + (Number(value) || 0),
               0
             );
       return sum + Math.max(0, Number(totalQuantity) || 0);
@@ -66,51 +66,69 @@ const Header = () => {
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <div className="container mx-auto flex items-center justify-between h-16 px-4 lg:px-8">
-        {/* Logo */}
-        <Link to="/tekstiltryk/produkter" className="inline-flex items-center">
-          <img
-            src={logoSrc}
-            alt="Trykeksperten"
-            className="h-12 md:h-14 w-auto object-contain"
-          />
-        </Link>
+    <header className="sticky top-0 z-50 bg-background border-b border-border overflow-visible">
+      <div className="container mx-auto min-h-28 md:min-h-32 px-4 lg:px-8 py-3">
+        <div className="hidden lg:grid min-h-[100px] md:min-h-[116px] grid-cols-[1fr_auto_1fr] items-center gap-6">
+          <nav className="justify-self-start flex items-center gap-2">
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`px-4 py-2.5 text-base font-medium rounded-lg transition-colors duration-200 ${
+                  item.path === "/tekstiltryk/produkter"
+                    ? location.pathname === "/tekstiltryk/produkter" || location.pathname.startsWith("/tekstiltryk/")
+                    : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
 
-        {/* Desktop nav */}
-        <nav className="hidden lg:flex items-center gap-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                item.path === "/tekstiltryk/produkter"
-                  ? location.pathname === "/tekstiltryk/produkter" || location.pathname.startsWith("/tekstiltryk/")
-                  : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Right side */}
-        <div className="flex items-center gap-3">
-          <LanguageSwitcher />
-          <Link to="/kurv" className="hidden sm:block">
-            <Button variant="hero" size="sm">
-              {t("nav.myCart")}{cartCount > 0 ? ` (${cartCount})` : ""}
-            </Button>
+          <Link to="/" className="justify-self-center inline-flex items-center px-6 py-2">
+            <img
+              src={logoSrc}
+              alt="Trykeksperten"
+              className="h-[3.125rem] md:h-[3.75rem] w-auto object-contain"
+            />
           </Link>
-          <button
-            className="lg:hidden p-2 text-foreground"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Menu"
-          >
-            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+
+          <div className="justify-self-end flex items-center gap-3">
+            <LanguageSwitcher />
+            <Link to="/kurv">
+              <Button variant="hero" size="sm" className="text-base px-5 h-11">
+                {t("nav.myCart")}{cartCount > 0 ? ` (${cartCount})` : ""}
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        <div className="lg:hidden flex min-h-[72px] items-center justify-between">
+          <Link to="/" className="inline-flex items-center px-2 py-1">
+            <img
+              src={logoSrc}
+              alt="Trykeksperten"
+              className="h-[2.2rem] w-auto object-contain"
+            />
+          </Link>
+
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher />
+            <Link to="/kurv" className="hidden sm:block">
+              <Button variant="hero" size="sm">
+                {t("nav.myCart")}{cartCount > 0 ? ` (${cartCount})` : ""}
+              </Button>
+            </Link>
+            <button
+              className="p-2 text-foreground"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Menu"
+            >
+              {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
       </div>
 
